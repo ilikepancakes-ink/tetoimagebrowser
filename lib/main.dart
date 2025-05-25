@@ -57,23 +57,47 @@ class ImageBrowserPage extends StatefulWidget {
   ImageBrowserPageState createState() => ImageBrowserPageState();
 }
 
-class ImageBrowserPageState extends State<ImageBrowserPage> {
+class ImageBrowserPageState extends State<ImageBrowserPage>
+    with SingleTickerProviderStateMixin {
   List<ImagePost> _images = [];
   int _page = 1;
   bool _isLoading = false;
   String? _errorMessage;
+  late TabController _tabController;
+  bool _isRule34Mode = false;
 
   // How many posts to fetch per page.
   final int _limit = 20;
-  // Base URL for SafeBooru using the provided link.
-  final String baseUrl = 'https://safebooru.org/index.php';
+  // Base URLs for different APIs
+  final String safeBooruUrl = 'https://safebooru.org/index.php';
+  final String rule34Url = 'https://rule34.xxx/index.php';
   // Search tag
   final String searchTag = 'kasane_teto';
 
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(_onTabChanged);
     _fetchImages();
+  }
+
+  @override
+  void dispose() {
+    _tabController.removeListener(_onTabChanged);
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  void _onTabChanged() {
+    if (_tabController.indexIsChanging) {
+      setState(() {
+        _isRule34Mode = _tabController.index == 1;
+        _page = 1; // Reset to first page when switching tabs
+        _images.clear(); // Clear current images
+      });
+      _fetchImages(); // Fetch new images from the new API
+    }
   }
 
   Future<void> _fetchImages() async {
@@ -81,6 +105,9 @@ class ImageBrowserPageState extends State<ImageBrowserPage> {
       _isLoading = true;
       _errorMessage = null;
     });
+
+    // Choose the appropriate base URL based on current mode
+    final String baseUrl = _isRule34Mode ? rule34Url : safeBooruUrl;
 
     // Construct the API endpoint URL.
     // "json=1" returns a JSON-formatted result and "pid" is the page number.
@@ -148,10 +175,17 @@ class ImageBrowserPageState extends State<ImageBrowserPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Kasane Teto Images'),
+        title: Text(_isRule34Mode ? 'Kasane Teto Images - rule34' : 'Kasane Teto Images'),
         leading: Padding(
           padding: const EdgeInsets.all(8.0),
           child: Image.asset('assets/images/teto_icon.png'),
+        ),
+        bottom: TabBar(
+          controller: _tabController,
+          tabs: const [
+            Tab(text: 'SafeBooru'),
+            Tab(text: 'rule34'),
+          ],
         ),
       ),
       body: Column(
@@ -216,7 +250,7 @@ class ImageBrowserPageState extends State<ImageBrowserPage> {
                       height: 24,
                     ),
                     const SizedBox(width: 8),
-                    Text('Page: $_page'),
+                    Text('Page: $_page (${_isRule34Mode ? 'Rule34' : 'SafeBooru'})'),
                   ],
                 ),
                 ElevatedButton(
