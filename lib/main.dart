@@ -123,8 +123,8 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
 
   // Search functionality
   late TextEditingController _searchController;
-  String _safeBooruSearchTag = 'kasane_teto';
-  String _rule34SearchTag = 'kasane_teto';
+  String _safeBooruSearchTag = '';
+  String _rule34SearchTag = '';
 
   // Get current search tag based on active tab
   String get _currentSearchTag => _isRule34Mode ? _rule34SearchTag : _safeBooruSearchTag;
@@ -135,7 +135,7 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
     _tabController = TabController(length: 2, vsync: this);
     _tabController.addListener(_onTabChanged);
     _searchController = TextEditingController(text: _safeBooruSearchTag); // Start with SafeBooru search
-    _fetchImages();
+    // Don't fetch images on startup - wait for user to search
   }
 
   @override
@@ -154,7 +154,10 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
         _images.clear(); // Clear current images
         _searchController.text = _currentSearchTag; // Update search field with current tab's search
       });
-      _fetchImages(); // Fetch new images from the new API
+      // Only fetch images if there's a search tag
+      if (_currentSearchTag.trim().isNotEmpty) {
+        _fetchImages(); // Fetch new images from the new API
+      }
     }
   }
 
@@ -247,6 +250,27 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
     _fetchImages();
   }
 
+  // Generate dynamic title based on current search tag and tab
+  String _getAppTitle() {
+    final String currentTag = _currentSearchTag;
+    final String platform = _isRule34Mode ? 'Rule34' : 'SafeBooru';
+
+    // Handle empty or whitespace-only tags
+    if (currentTag.trim().isEmpty) {
+      return 'Search for a image';
+    }
+
+    // Capitalize first letter of each word in the tag for better display
+    final String formattedTag = currentTag
+        .trim()
+        .split('_')
+        .where((word) => word.isNotEmpty) // Filter out empty strings
+        .map((word) => word[0].toUpperCase() + word.substring(1).toLowerCase())
+        .join(' ');
+
+    return '$formattedTag Images - $platform';
+  }
+
   // Show image modal with save/copy options
   void _showImageModal(ImagePost imagePost) {
     showDialog(
@@ -262,7 +286,7 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(_isRule34Mode ? 'Kasane Teto Images - rule34' : 'Kasane Teto Images'),
+        title: Text(_getAppTitle()),
         leading: const Padding(
           padding: EdgeInsets.all(8.0),
           child: Icon(Icons.music_note, color: Color(0xFFE91E63)),
@@ -282,46 +306,122 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
           ],
         ),
       ),
-      body: Column(
-        children: [
-          // Search bar
-          Container(
-            padding: const EdgeInsets.all(16.0),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _searchController,
-                    decoration: InputDecoration(
-                      hintText: 'Enter tags to search (e.g., kasane_teto)',
-                      prefixIcon: const Icon(Icons.search),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8.0),
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-                    ),
-                    onSubmitted: (_) => _performSearch(),
-                  ),
-                ),
-                const SizedBox(width: 8.0),
-                ElevatedButton(
-                  onPressed: _performSearch,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFE91E63),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-                  ),
-                  child: const Text('Search'),
-                ),
-              ],
+      body: _currentSearchTag.trim().isEmpty
+          ? _buildEmptySearchState()
+          : _buildSearchResultsState(),
+    );
+  }
+
+  // Build the centered search interface when no search has been performed
+  Widget _buildEmptySearchState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              Icons.search,
+              size: 80,
+              color: Color(0xFFE91E63),
             ),
+            const SizedBox(height: 24),
+            const Text(
+              'Search for a image',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Enter tags like "kasane_teto", "vocaloid", or "anime" to find images',
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey[600],
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 32),
+            SizedBox(
+              width: 400,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _searchController,
+                      decoration: InputDecoration(
+                        hintText: 'Search for a image',
+                        prefixIcon: const Icon(Icons.search),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8.0),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                      ),
+                      onSubmitted: (_) => _performSearch(),
+                    ),
+                  ),
+                  const SizedBox(width: 8.0),
+                  ElevatedButton(
+                    onPressed: _performSearch,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFE91E63),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                    ),
+                    child: const Text('Search'),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Build the search results interface when a search has been performed
+  Widget _buildSearchResultsState() {
+    return Column(
+      children: [
+        // Search bar
+        Container(
+          padding: const EdgeInsets.all(16.0),
+          child: Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _searchController,
+                  decoration: InputDecoration(
+                    hintText: 'Search for a image',
+                    prefixIcon: const Icon(Icons.search),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8.0),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                  ),
+                  onSubmitted: (_) => _performSearch(),
+                ),
+              ),
+              const SizedBox(width: 8.0),
+              ElevatedButton(
+                onPressed: _performSearch,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFE91E63),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                ),
+                child: const Text('Search'),
+              ),
+            ],
           ),
-          Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _errorMessage != null
-                    ? Center(child: Text(_errorMessage!))
-                    : GridView.builder(
+        ),
+        Expanded(
+          child: _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : _errorMessage != null
+                  ? Center(child: Text(_errorMessage!))
+                  : GridView.builder(
                         padding: const EdgeInsets.all(4),
                         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount: 2,
@@ -395,8 +495,7 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
             ),
           ),
         ],
-      ),
-    );
+      );
   }
 }
 
