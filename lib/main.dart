@@ -120,14 +120,21 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
   // Base URLs for different APIs
   final String safeBooruUrl = 'https://safebooru.org/index.php';
   final String rule34Url = 'https://rule34.xxx/index.php';
-  // Search tag
-  final String searchTag = 'kasane_teto';
+
+  // Search functionality
+  late TextEditingController _searchController;
+  String _safeBooruSearchTag = 'kasane_teto';
+  String _rule34SearchTag = 'kasane_teto';
+
+  // Get current search tag based on active tab
+  String get _currentSearchTag => _isRule34Mode ? _rule34SearchTag : _safeBooruSearchTag;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     _tabController.addListener(_onTabChanged);
+    _searchController = TextEditingController(text: _safeBooruSearchTag); // Start with SafeBooru search
     _fetchImages();
   }
 
@@ -135,6 +142,7 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
   void dispose() {
     _tabController.removeListener(_onTabChanged);
     _tabController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -144,6 +152,7 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
         _isRule34Mode = _tabController.index == 1;
         _page = 1; // Reset to first page when switching tabs
         _images.clear(); // Clear current images
+        _searchController.text = _currentSearchTag; // Update search field with current tab's search
       });
       _fetchImages(); // Fetch new images from the new API
     }
@@ -160,7 +169,7 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
 
     // Construct the API endpoint URL.
     // "json=1" returns a JSON-formatted result and "pid" is the page number.
-    final String apiUrl = '$baseUrl?page=dapi&s=post&q=index&json=1&pid=$_page&limit=$_limit&tags=$searchTag';
+    final String apiUrl = '$baseUrl?page=dapi&s=post&q=index&json=1&pid=$_page&limit=$_limit&tags=$_currentSearchTag';
     final Uri uri = Uri.parse(apiUrl);
 
     try {
@@ -178,7 +187,7 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
           });
         } else {
           setState(() {
-            _errorMessage = 'No images found for tag: $searchTag';
+            _errorMessage = 'No images found for tag: $_currentSearchTag';
           });
         }
       } else {
@@ -220,6 +229,24 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
     _fetchImages();
   }
 
+  // Handle search submission
+  void _performSearch() {
+    final searchText = _searchController.text.trim();
+    if (searchText.isEmpty) return;
+
+    setState(() {
+      // Update the appropriate search tag based on current tab
+      if (_isRule34Mode) {
+        _rule34SearchTag = searchText;
+      } else {
+        _safeBooruSearchTag = searchText;
+      }
+      _page = 1; // Reset to first page for new search
+      _images.clear(); // Clear current images
+    });
+    _fetchImages();
+  }
+
   // Show image modal with save/copy options
   void _showImageModal(ImagePost imagePost) {
     showDialog(
@@ -257,6 +284,38 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
       ),
       body: Column(
         children: [
+          // Search bar
+          Container(
+            padding: const EdgeInsets.all(16.0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _searchController,
+                    decoration: InputDecoration(
+                      hintText: 'Enter tags to search (e.g., kasane_teto)',
+                      prefixIcon: const Icon(Icons.search),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8.0),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                    ),
+                    onSubmitted: (_) => _performSearch(),
+                  ),
+                ),
+                const SizedBox(width: 8.0),
+                ElevatedButton(
+                  onPressed: _performSearch,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFE91E63),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                  ),
+                  child: const Text('Search'),
+                ),
+              ],
+            ),
+          ),
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())

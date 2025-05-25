@@ -1,4 +1,4 @@
-#define MyAppName "Kasane Teto Image Browser"
+#define MyAppName "tuff Image Browser"
 #define MyAppVersion "1.1.0"
 #define MyAppPublisher "internettools.org"
 #define MyAppURL "https://internettools.org/"
