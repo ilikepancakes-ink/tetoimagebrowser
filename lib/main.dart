@@ -25,6 +25,63 @@ class ImagePost {
       tags: json['tags'] ?? '',
     );
   }
+
+  // Convert to StarredImage
+  StarredImage toStarredImage(String platform) {
+    return StarredImage(
+      id: id,
+      fileUrl: fileUrl,
+      tags: tags,
+      platform: platform,
+      starredAt: DateTime.now(),
+    );
+  }
+}
+
+// Model for starred images
+class StarredImage {
+  final String id;
+  final String fileUrl;
+  final String tags;
+  final String platform; // 'SafeBooru' or 'Rule34'
+  final DateTime starredAt;
+
+  StarredImage({
+    required this.id,
+    required this.fileUrl,
+    required this.tags,
+    required this.platform,
+    required this.starredAt,
+  });
+
+  factory StarredImage.fromJson(Map<String, dynamic> json) {
+    return StarredImage(
+      id: json['id'] ?? '',
+      fileUrl: json['fileUrl'] ?? '',
+      tags: json['tags'] ?? '',
+      platform: json['platform'] ?? '',
+      starredAt: DateTime.parse(json['starredAt'] ?? DateTime.now().toIso8601String()),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'fileUrl': fileUrl,
+      'tags': tags,
+      'platform': platform,
+      'starredAt': starredAt.toIso8601String(),
+    };
+  }
+
+  // Convert to ImagePost for display
+  ImagePost toImagePost() {
+    return ImagePost(
+      id: id,
+      fileUrl: fileUrl,
+      tags: tags,
+    );
+  }
 }
 
 void main() {
@@ -124,6 +181,10 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
   String _safeBooruSearchTag = '';
   String _rule34SearchTag = '';
 
+  // Starred images functionality
+  List<StarredImage> _starredImages = [];
+  Set<String> _starredImageIds = {};
+
   // Get current search tag based on active tab
   String get _currentSearchTag => _isRule34Mode ? _rule34SearchTag : _safeBooruSearchTag;
 
@@ -133,6 +194,7 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
     _tabController = TabController(length: 2, vsync: this);
     _tabController.addListener(_onTabChanged);
     _searchController = TextEditingController(text: _safeBooruSearchTag); // Start with SafeBooru search
+    _loadStarredImages(); // Load starred images from storage
     // Don't fetch images on startup - wait for user to search
   }
 
@@ -282,13 +344,123 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
     return '$formattedTag Images - $platform';
   }
 
-  // Show image modal with save/copy options
+  // Load starred images from SharedPreferences
+  Future<void> _loadStarredImages() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final starredImagesJson = prefs.getStringList('starred_images') ?? [];
+
+      setState(() {
+        _starredImages = starredImagesJson
+            .map((jsonString) => StarredImage.fromJson(json.decode(jsonString)))
+            .toList();
+        _starredImageIds = _starredImages.map((img) => img.id).toSet();
+      });
+    } catch (e) {
+      print('Error loading starred images: $e');
+    }
+  }
+
+  // Save starred images to SharedPreferences
+  Future<void> _saveStarredImages() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final starredImagesJson = _starredImages
+          .map((img) => json.encode(img.toJson()))
+          .toList();
+      await prefs.setStringList('starred_images', starredImagesJson);
+    } catch (e) {
+      print('Error saving starred images: $e');
+    }
+  }
+
+  // Toggle star status of an image with haptic feedback
+  Future<void> _toggleStarImage(ImagePost imagePost) async {
+    final platform = _isRule34Mode ? 'Rule34' : 'SafeBooru';
+
+    // Add haptic feedback for better user experience
+    HapticFeedback.lightImpact();
+
+    setState(() {
+      if (_starredImageIds.contains(imagePost.id)) {
+        // Remove from starred
+        _starredImages.removeWhere((img) => img.id == imagePost.id);
+        _starredImageIds.remove(imagePost.id);
+      } else {
+        // Add to starred
+        final starredImage = imagePost.toStarredImage(platform);
+        _starredImages.add(starredImage);
+        _starredImageIds.add(imagePost.id);
+      }
+    });
+
+    await _saveStarredImages();
+  }
+
+  // Check if an image is starred
+  bool _isImageStarred(String imageId) {
+    return _starredImageIds.contains(imageId);
+  }
+
+  // Show starred images page with slide transition
+  void _showStarredImages() {
+    Navigator.of(context).push(
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) => StarredImagesPage(
+          starredImages: _starredImages,
+          onRemoveStarred: (starredImage) async {
+            setState(() {
+              _starredImages.removeWhere((img) => img.id == starredImage.id);
+              _starredImageIds.remove(starredImage.id);
+            });
+            await _saveStarredImages();
+          },
+        ),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          const begin = Offset(1.0, 0.0);
+          const end = Offset.zero;
+          const curve = Curves.easeInOutCubic;
+
+          var tween = Tween(begin: begin, end: end).chain(
+            CurveTween(curve: curve),
+          );
+
+          return SlideTransition(
+            position: animation.drive(tween),
+            child: child,
+          );
+        },
+        transitionDuration: const Duration(milliseconds: 300),
+        reverseTransitionDuration: const Duration(milliseconds: 250),
+      ),
+    );
+  }
+
+  // Show image modal with fade and scale animation
   void _showImageModal(ImagePost imagePost) {
-    showDialog(
+    showGeneralDialog(
       context: context,
       barrierDismissible: true,
-      builder: (BuildContext context) {
+      barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
+      barrierColor: Colors.black54,
+      transitionDuration: const Duration(milliseconds: 300),
+      pageBuilder: (context, animation, secondaryAnimation) {
         return ImageModal(imagePost: imagePost);
+      },
+      transitionBuilder: (context, animation, secondaryAnimation, child) {
+        return FadeTransition(
+          opacity: CurvedAnimation(
+            parent: animation,
+            curve: Curves.easeInOut,
+          ),
+          child: ScaleTransition(
+            scale: CurvedAnimation(
+              parent: animation,
+              curve: Curves.easeInOut,
+            ),
+            child: child,
+          ),
+        );
       },
     );
   }
@@ -304,6 +476,11 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
         ),
         actions: [
           IconButton(
+            icon: const Icon(Icons.star),
+            onPressed: _showStarredImages,
+            tooltip: 'Starred Images (${_starredImages.length})',
+          ),
+          IconButton(
             icon: Icon(widget.isDarkMode ? Icons.light_mode : Icons.dark_mode),
             onPressed: widget.onThemeToggle,
             tooltip: widget.isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode',
@@ -317,15 +494,34 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
           ],
         ),
       ),
-      body: _currentSearchTag.trim().isEmpty
-          ? _buildEmptySearchState()
-          : _buildSearchResultsState(),
+      body: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 400),
+        transitionBuilder: (Widget child, Animation<double> animation) {
+          return FadeTransition(
+            opacity: animation,
+            child: SlideTransition(
+              position: Tween<Offset>(
+                begin: const Offset(0.0, 0.1),
+                end: Offset.zero,
+              ).animate(CurvedAnimation(
+                parent: animation,
+                curve: Curves.easeInOut,
+              )),
+              child: child,
+            ),
+          );
+        },
+        child: _currentSearchTag.trim().isEmpty
+            ? _buildEmptySearchState()
+            : _buildSearchResultsState(),
+      ),
     );
   }
 
   // Build the centered search interface when no search has been performed
   Widget _buildEmptySearchState() {
     return Center(
+      key: const ValueKey('empty_search'),
       child: Padding(
         padding: const EdgeInsets.all(32.0),
         child: Column(
@@ -394,6 +590,7 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
   // Build the search results interface when a search has been performed
   Widget _buildSearchResultsState() {
     return Column(
+      key: ValueKey('search_results_$_currentSearchTag\_$_isRule34Mode'),
       children: [
         // Search bar
         Container(
@@ -440,11 +637,20 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
           ),
         ),
         Expanded(
-          child: _isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : _errorMessage != null
-                  ? Center(child: Text(_errorMessage!))
-                  : GridView.builder(
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 300),
+            child: _isLoading
+                ? const Center(
+                    key: ValueKey('loading'),
+                    child: CircularProgressIndicator(),
+                  )
+                : _errorMessage != null
+                    ? Center(
+                        key: ValueKey('error'),
+                        child: Text(_errorMessage!),
+                      )
+                    : GridView.builder(
+                        key: ValueKey('grid_$_currentSearchTag\_$_page'),
                         padding: const EdgeInsets.all(4),
                         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount: 2,
@@ -455,36 +661,88 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
                         itemCount: _images.length,
                         itemBuilder: (context, index) {
                           final imagePost = _images[index];
-                          return Card(
-                            child: GestureDetector(
-                              onTap: () => _showImageModal(imagePost),
-                              child: Column(
-                                children: [
-                                  Expanded(
-                                    child: Image.network(
-                                      imagePost.fileUrl,
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (context, error, stackTrace) =>
-                                          const Icon(Icons.error),
+                          return TweenAnimationBuilder<double>(
+                            duration: Duration(milliseconds: 300 + (index * 50)),
+                            tween: Tween(begin: 0.0, end: 1.0),
+                            curve: Curves.easeOutBack,
+                            builder: (context, value, child) {
+                              return Transform.scale(
+                                scale: value,
+                                child: Opacity(
+                                  opacity: value,
+                                  child: Card(
+                                    child: GestureDetector(
+                                      onTap: () => _showImageModal(imagePost),
+                                      child: Column(
+                                        children: [
+                                          Expanded(
+                                            child: Stack(
+                                              children: [
+                                                Image.network(
+                                                  imagePost.fileUrl,
+                                                  fit: BoxFit.cover,
+                                                  width: double.infinity,
+                                                  height: double.infinity,
+                                                  errorBuilder: (context, error, stackTrace) =>
+                                                      const Icon(Icons.error),
+                                                ),
+                                                // Star button overlay
+                                                Positioned(
+                                                  top: 8,
+                                                  right: 8,
+                                                  child: MouseRegion(
+                                                    cursor: SystemMouseCursors.click,
+                                                    child: GestureDetector(
+                                                      onTap: () => _toggleStarImage(imagePost),
+                                                      child: AnimatedContainer(
+                                                        duration: const Duration(milliseconds: 200),
+                                                        padding: const EdgeInsets.all(4),
+                                                        decoration: BoxDecoration(
+                                                          color: Colors.black.withValues(alpha: 0.7),
+                                                          borderRadius: BorderRadius.circular(12),
+                                                        ),
+                                                        child: AnimatedSwitcher(
+                                                          duration: const Duration(milliseconds: 200),
+                                                          child: Icon(
+                                                            _isImageStarred(imagePost.id)
+                                                                ? Icons.star
+                                                                : Icons.star_border,
+                                                            key: ValueKey(_isImageStarred(imagePost.id)),
+                                                            color: _isImageStarred(imagePost.id)
+                                                                ? Colors.yellow
+                                                                : Colors.white,
+                                                            size: 20,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          Container(
+                                            padding: const EdgeInsets.all(4),
+                                            child: Text(
+                                              imagePost.tags,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: const TextStyle(fontSize: 10),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ),
-                                  Container(
-                                    padding: const EdgeInsets.all(4),
-                                    child: Text(
-                                      imagePost.tags,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(fontSize: 10),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
+                                ),
+                              );
+                            },
                           );
                         },
                       ),
           ),
-          Container(
+        ),
+        Container(
             padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
             child: Wrap(
               spacing: 8,
@@ -694,6 +952,193 @@ class ImageModal extends StatelessWidget {
         content: Text(message),
         duration: const Duration(seconds: 2),
       ),
+    );
+  }
+}
+
+// Starred Images Page
+class StarredImagesPage extends StatelessWidget {
+  final List<StarredImage> starredImages;
+  final Function(StarredImage) onRemoveStarred;
+
+  const StarredImagesPage({
+    super.key,
+    required this.starredImages,
+    required this.onRemoveStarred,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Starred Images (${starredImages.length})'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+      ),
+      body: starredImages.isEmpty
+          ? const Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.star_border,
+                    size: 80,
+                    color: Color(0xFFE91E63),
+                  ),
+                  SizedBox(height: 16),
+                  Text(
+                    'No starred images yet',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    'Star images by clicking the star icon when hovering over them',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.grey,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            )
+          : GridView.builder(
+              padding: const EdgeInsets.all(8),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                childAspectRatio: 1,
+                crossAxisSpacing: 8,
+                mainAxisSpacing: 8,
+              ),
+              itemCount: starredImages.length,
+              itemBuilder: (context, index) {
+                final starredImage = starredImages[index];
+                final imagePost = starredImage.toImagePost();
+
+                return TweenAnimationBuilder<double>(
+                  duration: Duration(milliseconds: 200 + (index * 30)),
+                  tween: Tween(begin: 0.0, end: 1.0),
+                  curve: Curves.easeOutCubic,
+                  builder: (context, value, child) {
+                    return Transform.translate(
+                      offset: Offset(0, 20 * (1 - value)),
+                      child: Opacity(
+                        opacity: value,
+                        child: Card(
+                  child: GestureDetector(
+                    onTap: () => _showImageModal(context, imagePost),
+                    child: Column(
+                      children: [
+                        Expanded(
+                          child: Stack(
+                            children: [
+                              Image.network(
+                                starredImage.fileUrl,
+                                fit: BoxFit.cover,
+                                width: double.infinity,
+                                height: double.infinity,
+                                errorBuilder: (context, error, stackTrace) =>
+                                    const Icon(Icons.error),
+                              ),
+                              // Remove star button
+                              Positioned(
+                                top: 8,
+                                right: 8,
+                                child: MouseRegion(
+                                  cursor: SystemMouseCursors.click,
+                                  child: GestureDetector(
+                                    onTap: () => onRemoveStarred(starredImage),
+                                    child: Container(
+                                      padding: const EdgeInsets.all(4),
+                                      decoration: BoxDecoration(
+                                        color: Colors.black.withValues(alpha: 0.7),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: const Icon(
+                                        Icons.star,
+                                        color: Colors.yellow,
+                                        size: 20,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              // Platform badge
+                              Positioned(
+                                top: 8,
+                                left: 8,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withValues(alpha: 0.7),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    starredImage.platform,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.all(4),
+                          child: Text(
+                            starredImage.tags,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 10),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                        ),
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+    );
+  }
+
+  // Show image modal with animation
+  void _showImageModal(BuildContext context, ImagePost imagePost) {
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
+      barrierColor: Colors.black54,
+      transitionDuration: const Duration(milliseconds: 300),
+      pageBuilder: (context, animation, secondaryAnimation) {
+        return ImageModal(imagePost: imagePost);
+      },
+      transitionBuilder: (context, animation, secondaryAnimation, child) {
+        return FadeTransition(
+          opacity: CurvedAnimation(
+            parent: animation,
+            curve: Curves.easeInOut,
+          ),
+          child: ScaleTransition(
+            scale: CurvedAnimation(
+              parent: animation,
+              curve: Curves.easeInOut,
+            ),
+            child: child,
+          ),
+        );
+      },
     );
   }
 }
