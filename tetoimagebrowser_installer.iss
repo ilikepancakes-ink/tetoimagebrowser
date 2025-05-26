@@ -1,5 +1,5 @@
 #define MyAppName "tuff Image Browser"
-#define MyAppVersion "2.0.0"
+#define MyAppVersion "2.3.0"
 #define MyAppPublisher "internettools.org"
 #define MyAppURL "https://internettools.org/"
 #define MyAppExeName "tetoimagebrowser.exe"
