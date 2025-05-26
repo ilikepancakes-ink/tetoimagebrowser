@@ -5,6 +5,8 @@ import 'package:http/http.dart' as http;
 import 'package:dio/dio.dart';
 import 'package:gal/gal.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:video_player/video_player.dart';
+import 'package:chewie/chewie.dart';
 
 class ImagePost {
   final String id;
@@ -23,6 +25,27 @@ class ImagePost {
       fileUrl: json['file_url'] ?? '',
       tags: json['tags'] ?? '',
     );
+  }
+
+  // Check if the file is a video based on file extension
+  bool get isVideo {
+    final url = fileUrl.toLowerCase();
+    return url.endsWith('.mp4') ||
+           url.endsWith('.webm') ||
+           url.endsWith('.mov') ||
+           url.endsWith('.avi') ||
+           url.endsWith('.mkv') ||
+           url.endsWith('.gif'); // GIFs can be treated as videos for better playback
+  }
+
+  // Check if the file is an image
+  bool get isImage {
+    return !isVideo;
+  }
+
+  // Get file type for display
+  String get fileType {
+    return isVideo ? 'Video' : 'Image';
   }
 
   // Convert to StarredImage
@@ -435,7 +458,7 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
     );
   }
 
-  // Show image modal with fade and scale animation
+  // Show media modal with fade and scale animation (video or image)
   void _showImageModal(ImagePost imagePost) {
     showGeneralDialog(
       context: context,
@@ -444,7 +467,10 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
       barrierColor: Colors.black54,
       transitionDuration: const Duration(milliseconds: 300),
       pageBuilder: (context, animation, secondaryAnimation) {
-        return ImageModal(imagePost: imagePost);
+        // Show video modal for videos, image modal for images
+        return imagePost.isVideo
+            ? VideoModal(imagePost: imagePost)
+            : ImageModal(imagePost: imagePost);
       },
       transitionBuilder: (context, animation, secondaryAnimation, child) {
         return FadeTransition(
@@ -668,7 +694,7 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
                               return Transform.scale(
                                 scale: value,
                                 child: Opacity(
-                                  opacity: value,
+                                  opacity: value.clamp(0.0, 1.0),
                                   child: Card(
                                     child: GestureDetector(
                                       onTap: () => _showImageModal(imagePost),
@@ -684,6 +710,44 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
                                                   height: double.infinity,
                                                   errorBuilder: (context, error, stackTrace) =>
                                                       const Icon(Icons.error),
+                                                ),
+                                                // Video play icon overlay (center)
+                                                if (imagePost.isVideo)
+                                                  Center(
+                                                    child: Container(
+                                                      padding: const EdgeInsets.all(12),
+                                                      decoration: const BoxDecoration(
+                                                        color: Colors.black54,
+                                                        shape: BoxShape.circle,
+                                                      ),
+                                                      child: const Icon(
+                                                        Icons.play_arrow,
+                                                        color: Colors.white,
+                                                        size: 32,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                // File type badge (top left)
+                                                Positioned(
+                                                  top: 8,
+                                                  left: 8,
+                                                  child: Container(
+                                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                    decoration: BoxDecoration(
+                                                      color: imagePost.isVideo
+                                                          ? Colors.red.withValues(alpha: 0.8)
+                                                          : Colors.blue.withValues(alpha: 0.8),
+                                                      borderRadius: BorderRadius.circular(8),
+                                                    ),
+                                                    child: Text(
+                                                      imagePost.fileType,
+                                                      style: const TextStyle(
+                                                        color: Colors.white,
+                                                        fontSize: 8,
+                                                        fontWeight: FontWeight.bold,
+                                                      ),
+                                                    ),
+                                                  ),
                                                 ),
                                                 // Star button overlay
                                                 Positioned(
@@ -955,6 +1019,302 @@ class ImageModal extends StatelessWidget {
   }
 }
 
+// Video Player Modal widget for displaying videos with controls
+class VideoModal extends StatefulWidget {
+  final ImagePost imagePost;
+
+  const VideoModal({super.key, required this.imagePost});
+
+  @override
+  State<VideoModal> createState() => _VideoModalState();
+}
+
+class _VideoModalState extends State<VideoModal> {
+  late VideoPlayerController _videoController;
+  ChewieController? _chewieController;
+  bool _isLoading = true;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeVideo();
+  }
+
+  Future<void> _initializeVideo() async {
+    try {
+      _videoController = VideoPlayerController.networkUrl(
+        Uri.parse(widget.imagePost.fileUrl),
+      );
+
+      await _videoController.initialize();
+
+      if (mounted) {
+        _chewieController = ChewieController(
+          videoPlayerController: _videoController,
+          autoPlay: false,
+          looping: true,
+          allowFullScreen: true,
+          allowMuting: true,
+          showControls: true,
+          materialProgressColors: ChewieProgressColors(
+            playedColor: const Color(0xFFE91E63),
+            handleColor: const Color(0xFFE91E63),
+            backgroundColor: Colors.grey,
+            bufferedColor: Colors.grey[300]!,
+          ),
+          placeholder: Container(
+            color: Colors.black,
+            child: const Center(
+              child: CircularProgressIndicator(
+                color: Color(0xFFE91E63),
+              ),
+            ),
+          ),
+          errorBuilder: (context, errorMessage) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                    Icons.error,
+                    color: Colors.white,
+                    size: 64,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Error loading video: $errorMessage',
+                    style: const TextStyle(color: Colors.white),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = e.toString();
+        });
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _chewieController?.dispose();
+    _videoController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog.fullscreen(
+      backgroundColor: Colors.black,
+      child: Stack(
+        children: [
+          // Video player or loading/error state
+          if (_isLoading)
+            const Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(
+                    color: Color(0xFFE91E63),
+                  ),
+                  SizedBox(height: 16),
+                  Text(
+                    'Loading video...',
+                    style: TextStyle(color: Colors.white, fontSize: 16),
+                  ),
+                ],
+              ),
+            )
+          else if (_errorMessage != null)
+            Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                    Icons.error,
+                    color: Colors.white,
+                    size: 64,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Error loading video: $_errorMessage',
+                    style: const TextStyle(color: Colors.white, fontSize: 16),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFE91E63),
+                      foregroundColor: Colors.white,
+                    ),
+                    child: const Text('Close'),
+                  ),
+                ],
+              ),
+            )
+          else if (_chewieController != null)
+            Center(
+              child: AspectRatio(
+                aspectRatio: _videoController.value.aspectRatio,
+                child: Chewie(controller: _chewieController!),
+              ),
+            ),
+          // Close button
+          Positioned(
+            top: 40,
+            right: 16,
+            child: IconButton(
+              icon: const Icon(Icons.close, color: Colors.white, size: 32),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ),
+          // Action buttons
+          if (!_isLoading && _errorMessage == null)
+            Positioned(
+              bottom: 80,
+              left: 0,
+              right: 0,
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    ElevatedButton.icon(
+                      onPressed: () => _saveVideo(context, widget.imagePost.fileUrl),
+                      icon: const Icon(Icons.download),
+                      label: const Text('Save'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFE91E63),
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+                    ElevatedButton.icon(
+                      onPressed: () => _copyVideo(context, widget.imagePost.fileUrl),
+                      icon: const Icon(Icons.copy),
+                      label: const Text('Copy URL'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFE91E63),
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          // Tags
+          if (!_isLoading && _errorMessage == null)
+            Positioned(
+              bottom: 16,
+              left: 0,
+              right: 0,
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Container(
+                  padding: const EdgeInsets.all(8.0),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.7),
+                    borderRadius: BorderRadius.circular(8.0),
+                  ),
+                  child: Text(
+                    widget.imagePost.tags,
+                    style: const TextStyle(color: Colors.white, fontSize: 12),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  // Save video to device gallery
+  Future<void> _saveVideo(BuildContext context, String videoUrl) async {
+    try {
+      // Check if we have permission to save videos
+      if (!await Gal.hasAccess()) {
+        // Request permission
+        if (!await Gal.requestAccess()) {
+          if (context.mounted) {
+            _showSnackBar(context, 'Storage permission is required to save videos');
+          }
+          return;
+        }
+      }
+
+      // Show loading indicator
+      if (context.mounted) {
+        _showSnackBar(context, 'Downloading video...');
+      }
+
+      // Download video
+      final dio = Dio();
+      final response = await dio.get(
+        videoUrl,
+        options: Options(responseType: ResponseType.bytes),
+      );
+
+      if (response.data == null) {
+        if (context.mounted) {
+          _showSnackBar(context, 'Failed to download video');
+        }
+        return;
+      }
+
+      // Save to gallery using Gal (videos are saved as image bytes in Gal)
+      await Gal.putImageBytes(
+        response.data,
+        name: 'teto_video_${DateTime.now().millisecondsSinceEpoch}',
+      );
+
+      if (context.mounted) {
+        _showSnackBar(context, 'Video saved to gallery successfully!');
+      }
+    } catch (e) {
+      if (context.mounted) {
+        _showSnackBar(context, 'Error saving video: ${e.toString()}');
+      }
+    }
+  }
+
+  // Copy video URL to clipboard
+  Future<void> _copyVideo(BuildContext context, String videoUrl) async {
+    try {
+      await Clipboard.setData(ClipboardData(text: videoUrl));
+      if (context.mounted) {
+        _showSnackBar(context, 'Video URL copied to clipboard!');
+      }
+    } catch (e) {
+      if (context.mounted) {
+        _showSnackBar(context, 'Error copying video: $e');
+      }
+    }
+  }
+
+  // Show snackbar message
+  void _showSnackBar(BuildContext context, String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+}
+
 // Starred Images Page
 class StarredImagesPage extends StatelessWidget {
   final List<StarredImage> starredImages;
@@ -1027,7 +1387,7 @@ class StarredImagesPage extends StatelessWidget {
                     return Transform.translate(
                       offset: Offset(0, 20 * (1 - value)),
                       child: Opacity(
-                        opacity: value,
+                        opacity: value.clamp(0.0, 1.0),
                         child: Card(
                   child: GestureDetector(
                     onTap: () => _showImageModal(context, imagePost),
@@ -1043,6 +1403,44 @@ class StarredImagesPage extends StatelessWidget {
                                 height: double.infinity,
                                 errorBuilder: (context, error, stackTrace) =>
                                     const Icon(Icons.error),
+                              ),
+                              // Video play icon overlay (center)
+                              if (imagePost.isVideo)
+                                Center(
+                                  child: Container(
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: const BoxDecoration(
+                                      color: Colors.black54,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(
+                                      Icons.play_arrow,
+                                      color: Colors.white,
+                                      size: 32,
+                                    ),
+                                  ),
+                                ),
+                              // File type badge (top left)
+                              Positioned(
+                                top: 8,
+                                left: 8,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: imagePost.isVideo
+                                        ? Colors.red.withValues(alpha: 0.8)
+                                        : Colors.blue.withValues(alpha: 0.8),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    imagePost.fileType,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 8,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
                               ),
                               // Remove star button
                               Positioned(
@@ -1067,9 +1465,9 @@ class StarredImagesPage extends StatelessWidget {
                                   ),
                                 ),
                               ),
-                              // Platform badge
+                              // Platform badge (bottom left)
                               Positioned(
-                                top: 8,
+                                bottom: 8,
                                 left: 8,
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -1112,7 +1510,7 @@ class StarredImagesPage extends StatelessWidget {
     );
   }
 
-  // Show image modal with animation
+  // Show media modal with animation (video or image)
   void _showImageModal(BuildContext context, ImagePost imagePost) {
     showGeneralDialog(
       context: context,
@@ -1121,7 +1519,10 @@ class StarredImagesPage extends StatelessWidget {
       barrierColor: Colors.black54,
       transitionDuration: const Duration(milliseconds: 300),
       pageBuilder: (context, animation, secondaryAnimation) {
-        return ImageModal(imagePost: imagePost);
+        // Show video modal for videos, image modal for images
+        return imagePost.isVideo
+            ? VideoModal(imagePost: imagePost)
+            : ImageModal(imagePost: imagePost);
       },
       transitionBuilder: (context, animation, secondaryAnimation, child) {
         return FadeTransition(
