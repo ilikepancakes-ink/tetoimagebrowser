@@ -1,11 +1,9 @@
 import 'dart:convert';
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:dio/dio.dart';
-import 'package:image_gallery_saver/image_gallery_saver.dart';
-import 'package:permission_handler/permission_handler.dart';
+import 'package:gal/gal.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 // Model for an image post from SafeBooru.
@@ -250,6 +248,19 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
     _fetchImages();
   }
 
+  // Clear search and return to home state
+  void _goToHome() {
+    setState(() {
+      // Clear search tags for both tabs
+      _safeBooruSearchTag = '';
+      _rule34SearchTag = '';
+      _searchController.clear();
+      _images.clear();
+      _page = 1;
+      _errorMessage = null;
+    });
+  }
+
   // Generate dynamic title based on current search tag and tab
   String _getAppTitle() {
     final String currentTag = _currentSearchTag;
@@ -389,6 +400,18 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
           padding: const EdgeInsets.all(16.0),
           child: Row(
             children: [
+              // Home button
+              IconButton(
+                onPressed: _goToHome,
+                icon: const Icon(Icons.home),
+                tooltip: 'Go to Home',
+                style: IconButton.styleFrom(
+                  backgroundColor: const Color(0xFFE91E63),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.all(12.0),
+                ),
+              ),
+              const SizedBox(width: 8.0),
               Expanded(
                 child: TextField(
                   controller: _searchController,
@@ -508,7 +531,7 @@ class ImageModal extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Dialog.fullscreen(
-      backgroundColor: Colors.black.withOpacity(0.9),
+      backgroundColor: Colors.black.withValues(alpha: 0.9),
       child: Stack(
         children: [
           // Blurred background
@@ -516,7 +539,7 @@ class ImageModal extends StatelessWidget {
             child: GestureDetector(
               onTap: () => Navigator.of(context).pop(),
               child: Container(
-                color: Colors.black.withOpacity(0.8),
+                color: Colors.black.withValues(alpha: 0.8),
               ),
             ),
           ),
@@ -583,7 +606,7 @@ class ImageModal extends StatelessWidget {
                   child: Container(
                     padding: const EdgeInsets.all(8.0),
                     decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.7),
+                      color: Colors.black.withValues(alpha: 0.7),
                       borderRadius: BorderRadius.circular(8.0),
                     ),
                     child: Text(
@@ -604,11 +627,20 @@ class ImageModal extends StatelessWidget {
   // Save image to device gallery
   Future<void> _saveImage(BuildContext context, String imageUrl) async {
     try {
-      // Request storage permission
-      var status = await Permission.storage.request();
-      if (status.isDenied) {
-        _showSnackBar(context, 'Storage permission denied');
-        return;
+      // Check if we have permission to save images
+      if (!await Gal.hasAccess()) {
+        // Request permission
+        if (!await Gal.requestAccess()) {
+          if (context.mounted) {
+            _showSnackBar(context, 'Storage permission is required to save images');
+          }
+          return;
+        }
+      }
+
+      // Show loading indicator
+      if (context.mounted) {
+        _showSnackBar(context, 'Downloading image...');
       }
 
       // Download image
@@ -618,20 +650,26 @@ class ImageModal extends StatelessWidget {
         options: Options(responseType: ResponseType.bytes),
       );
 
-      // Save to gallery
-      final result = await ImageGallerySaver.saveImage(
-        Uint8List.fromList(response.data),
-        quality: 100,
+      if (response.data == null) {
+        if (context.mounted) {
+          _showSnackBar(context, 'Failed to download image');
+        }
+        return;
+      }
+
+      // Save to gallery using Gal
+      await Gal.putImageBytes(
+        response.data,
         name: 'teto_image_${DateTime.now().millisecondsSinceEpoch}',
       );
 
-      if (result['isSuccess']) {
-        _showSnackBar(context, 'Image saved to gallery!');
-      } else {
-        _showSnackBar(context, 'Failed to save image');
+      if (context.mounted) {
+        _showSnackBar(context, 'Image saved to gallery successfully!');
       }
     } catch (e) {
-      _showSnackBar(context, 'Error saving image: $e');
+      if (context.mounted) {
+        _showSnackBar(context, 'Error saving image: ${e.toString()}');
+      }
     }
   }
 
@@ -639,9 +677,13 @@ class ImageModal extends StatelessWidget {
   Future<void> _copyImage(BuildContext context, String imageUrl) async {
     try {
       await Clipboard.setData(ClipboardData(text: imageUrl));
-      _showSnackBar(context, 'Image URL copied to clipboard!');
+      if (context.mounted) {
+        _showSnackBar(context, 'Image URL copied to clipboard!');
+      }
     } catch (e) {
-      _showSnackBar(context, 'Error copying image: $e');
+      if (context.mounted) {
+        _showSnackBar(context, 'Error copying image: $e');
+      }
     }
   }
 
