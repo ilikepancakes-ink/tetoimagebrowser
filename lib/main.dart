@@ -6,7 +6,6 @@ import 'package:dio/dio.dart';
 import 'package:gal/gal.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-// Model for an image post from SafeBooru.
 class ImagePost {
   final String id;
   final String fileUrl;
