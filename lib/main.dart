@@ -195,6 +195,81 @@ class StarredImage {
   }
 }
 
+// Model for search history
+class SearchHistoryItem {
+  final String searchTag;
+  final String platform; // 'SafeBooru' or 'Rule34'
+  final DateTime searchedAt;
+
+  SearchHistoryItem({
+    required this.searchTag,
+    required this.platform,
+    required this.searchedAt,
+  });
+
+  factory SearchHistoryItem.fromJson(Map<String, dynamic> json) {
+    return SearchHistoryItem(
+      searchTag: json['searchTag'] ?? '',
+      platform: json['platform'] ?? '',
+      searchedAt: DateTime.parse(json['searchedAt'] ?? DateTime.now().toIso8601String()),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'searchTag': searchTag,
+      'platform': platform,
+      'searchedAt': searchedAt.toIso8601String(),
+    };
+  }
+}
+
+// Model for clicked images history
+class ClickedImageItem {
+  final String id;
+  final String fileUrl;
+  final String tags;
+  final String platform; // 'SafeBooru' or 'Rule34'
+  final DateTime clickedAt;
+
+  ClickedImageItem({
+    required this.id,
+    required this.fileUrl,
+    required this.tags,
+    required this.platform,
+    required this.clickedAt,
+  });
+
+  factory ClickedImageItem.fromJson(Map<String, dynamic> json) {
+    return ClickedImageItem(
+      id: json['id'] ?? '',
+      fileUrl: json['fileUrl'] ?? '',
+      tags: json['tags'] ?? '',
+      platform: json['platform'] ?? '',
+      clickedAt: DateTime.parse(json['clickedAt'] ?? DateTime.now().toIso8601String()),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'fileUrl': fileUrl,
+      'tags': tags,
+      'platform': platform,
+      'clickedAt': clickedAt.toIso8601String(),
+    };
+  }
+
+  // Convert to ImagePost for display
+  ImagePost toImagePost() {
+    return ImagePost(
+      id: id,
+      fileUrl: fileUrl,
+      tags: tags,
+    );
+  }
+}
+
 void main() {
   // Set app title and icon for desktop platforms
   WidgetsFlutterBinding.ensureInitialized();
@@ -298,6 +373,10 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
   List<StarredImage> _starredImages = [];
   Set<String> _starredImageIds = {};
 
+  // History functionality
+  List<SearchHistoryItem> _searchHistory = [];
+  List<ClickedImageItem> _clickedImages = [];
+
   // Get current search tag based on active tab
   String get _currentSearchTag => _isRule34Mode ? _rule34SearchTag : _safeBooruSearchTag;
 
@@ -312,6 +391,7 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
     _searchController = TextEditingController(text: _safeBooruSearchTag); // Start with SafeBooru search
     _loadSettings(); // Load app settings
     _loadStarredImages(); // Load starred images from storage
+    _loadHistory(); // Load search and click history from storage
     // Don't fetch images on startup - wait for user to search
   }
 
@@ -463,6 +543,11 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
       _page = 1; // Reset to first page for new search
       _images.clear(); // Clear current images
     });
+
+    // Add to search history
+    final platform = _isRule34Mode ? 'Rule34' : 'SafeBooru';
+    _addToSearchHistory(searchText, platform);
+
     _fetchImages();
   }
 
@@ -560,6 +645,161 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
     return _starredImageIds.contains(imageId);
   }
 
+  // Load history from SharedPreferences
+  Future<void> _loadHistory() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+
+      // Load search history
+      final searchHistoryJson = prefs.getStringList('search_history') ?? [];
+      setState(() {
+        _searchHistory = searchHistoryJson
+            .map((jsonString) => SearchHistoryItem.fromJson(json.decode(jsonString)))
+            .toList();
+      });
+
+      // Load clicked images history
+      final clickedImagesJson = prefs.getStringList('clicked_images') ?? [];
+      setState(() {
+        _clickedImages = clickedImagesJson
+            .map((jsonString) => ClickedImageItem.fromJson(json.decode(jsonString)))
+            .toList();
+      });
+    } catch (e) {
+      print('Error loading history: $e');
+    }
+  }
+
+  // Save search history to SharedPreferences
+  Future<void> _saveSearchHistory() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final searchHistoryJson = _searchHistory
+          .map((item) => json.encode(item.toJson()))
+          .toList();
+      await prefs.setStringList('search_history', searchHistoryJson);
+    } catch (e) {
+      print('Error saving search history: $e');
+    }
+  }
+
+  // Save clicked images history to SharedPreferences
+  Future<void> _saveClickedImages() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final clickedImagesJson = _clickedImages
+          .map((item) => json.encode(item.toJson()))
+          .toList();
+      await prefs.setStringList('clicked_images', clickedImagesJson);
+    } catch (e) {
+      print('Error saving clicked images: $e');
+    }
+  }
+
+  // Add search to history (avoid duplicates and limit size)
+  Future<void> _addToSearchHistory(String searchTag, String platform) async {
+    if (searchTag.trim().isEmpty || _settings.incognitoMode) return;
+
+    // Remove existing entry if it exists
+    _searchHistory.removeWhere((item) =>
+        item.searchTag == searchTag && item.platform == platform);
+
+    // Add new entry at the beginning
+    _searchHistory.insert(0, SearchHistoryItem(
+      searchTag: searchTag,
+      platform: platform,
+      searchedAt: DateTime.now(),
+    ));
+
+    // Limit history size to 100 items
+    if (_searchHistory.length > 100) {
+      _searchHistory = _searchHistory.take(100).toList();
+    }
+
+    await _saveSearchHistory();
+  }
+
+  // Add clicked image to history (avoid duplicates and limit size)
+  Future<void> _addToClickedImages(ImagePost imagePost, String platform) async {
+    if (_settings.incognitoMode) return;
+
+    // Remove existing entry if it exists
+    _clickedImages.removeWhere((item) => item.id == imagePost.id);
+
+    // Add new entry at the beginning
+    _clickedImages.insert(0, ClickedImageItem(
+      id: imagePost.id,
+      fileUrl: imagePost.fileUrl,
+      tags: imagePost.tags,
+      platform: platform,
+      clickedAt: DateTime.now(),
+    ));
+
+    // Limit history size to 200 items
+    if (_clickedImages.length > 200) {
+      _clickedImages = _clickedImages.take(200).toList();
+    }
+
+    await _saveClickedImages();
+  }
+
+  // Show history page with slide transition
+  void _showHistory() {
+    Navigator.of(context).push(
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) => HistoryPage(
+          searchHistory: _searchHistory,
+          clickedImages: _clickedImages,
+          onClearSearchHistory: () async {
+            setState(() {
+              _searchHistory.clear();
+            });
+            await _saveSearchHistory();
+          },
+          onClearClickedImages: () async {
+            setState(() {
+              _clickedImages.clear();
+            });
+            await _saveClickedImages();
+          },
+          onSearchFromHistory: (searchTag, platform) {
+            // Switch to the appropriate tab
+            setState(() {
+              _isRule34Mode = platform == 'Rule34';
+              _tabController.index = _isRule34Mode ? 1 : 0;
+              if (_isRule34Mode) {
+                _rule34SearchTag = searchTag;
+              } else {
+                _safeBooruSearchTag = searchTag;
+              }
+              _searchController.text = searchTag;
+              _page = 1;
+              _images.clear();
+            });
+            Navigator.of(context).pop(); // Close history page
+            _fetchImages(); // Fetch images for the selected search
+          },
+        ),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          const begin = Offset(1.0, 0.0);
+          const end = Offset.zero;
+          const curve = Curves.easeInOutCubic;
+
+          var tween = Tween(begin: begin, end: end).chain(
+            CurveTween(curve: curve),
+          );
+
+          return SlideTransition(
+            position: animation.drive(tween),
+            child: child,
+          );
+        },
+        transitionDuration: const Duration(milliseconds: 300),
+        reverseTransitionDuration: const Duration(milliseconds: 250),
+      ),
+    );
+  }
+
   // Show starred images page with slide transition
   void _showStarredImages() {
     Navigator.of(context).push(
@@ -596,6 +836,10 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
 
   // Show media modal with fade and scale animation (video or image)
   void _showImageModal(ImagePost imagePost) {
+    // Add to clicked images history
+    final platform = _isRule34Mode ? 'Rule34' : 'SafeBooru';
+    _addToClickedImages(imagePost, platform);
+
     showGeneralDialog(
       context: context,
       barrierDismissible: true,
@@ -636,6 +880,11 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
           child: Icon(Icons.music_note, color: Color(0xFFE91E63)),
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.history),
+            onPressed: _showHistory,
+            tooltip: 'History (${_searchHistory.length + _clickedImages.length})',
+          ),
           IconButton(
             icon: const Icon(Icons.star),
             onPressed: _showStarredImages,
@@ -1114,6 +1363,12 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
                 () => _clearSearchHistory(),
               ),
               _buildActionSetting(
+                'Clear Clicked Images History',
+                'Remove all clicked images history',
+                Icons.image,
+                () => _clearClickedImagesHistory(),
+              ),
+              _buildActionSetting(
                 'Clear Starred Images',
                 'Remove all starred images',
                 Icons.star_border,
@@ -1319,11 +1574,47 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
     );
 
     if (confirmed == true) {
-      // Clear search history logic would go here
-      // For now, just show a snackbar
+      setState(() {
+        _searchHistory.clear();
+      });
+      await _saveSearchHistory();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Search history cleared')),
+        );
+      }
+    }
+  }
+
+  // Clear clicked images history
+  Future<void> _clearClickedImagesHistory() async {
+    // Show confirmation dialog
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Clear Clicked Images History'),
+        content: const Text('Are you sure you want to clear all clicked images history?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Clear'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      setState(() {
+        _clickedImages.clear();
+      });
+      await _saveClickedImages();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Clicked images history cleared')),
         );
       }
     }
@@ -2075,6 +2366,453 @@ class StarredImagesPage extends StatelessWidget {
       pageBuilder: (context, animation, secondaryAnimation) {
         // Show video modal for videos, image modal for images
         // Note: Using default settings for starred images page
+        return imagePost.isVideo
+            ? VideoModal(imagePost: imagePost, settings: const AppSettings())
+            : ImageModal(imagePost: imagePost);
+      },
+      transitionBuilder: (context, animation, secondaryAnimation, child) {
+        return FadeTransition(
+          opacity: CurvedAnimation(
+            parent: animation,
+            curve: Curves.easeInOut,
+          ),
+          child: ScaleTransition(
+            scale: CurvedAnimation(
+              parent: animation,
+              curve: Curves.easeInOut,
+            ),
+            child: child,
+          ),
+        );
+      },
+    );
+  }
+}
+
+// History Page
+class HistoryPage extends StatefulWidget {
+  final List<SearchHistoryItem> searchHistory;
+  final List<ClickedImageItem> clickedImages;
+  final VoidCallback onClearSearchHistory;
+  final VoidCallback onClearClickedImages;
+  final Function(String searchTag, String platform) onSearchFromHistory;
+
+  const HistoryPage({
+    super.key,
+    required this.searchHistory,
+    required this.clickedImages,
+    required this.onClearSearchHistory,
+    required this.onClearClickedImages,
+    required this.onSearchFromHistory,
+  });
+
+  @override
+  State<HistoryPage> createState() => _HistoryPageState();
+}
+
+class _HistoryPageState extends State<HistoryPage> with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('History (${widget.searchHistory.length + widget.clickedImages.length})'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        bottom: TabBar(
+          controller: _tabController,
+          tabs: [
+            Tab(text: 'Search History (${widget.searchHistory.length})'),
+            Tab(text: 'Clicked Images (${widget.clickedImages.length})'),
+          ],
+        ),
+      ),
+      body: TabBarView(
+        controller: _tabController,
+        children: [
+          _buildSearchHistoryTab(),
+          _buildClickedImagesTab(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSearchHistoryTab() {
+    if (widget.searchHistory.isEmpty) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.history,
+              size: 80,
+              color: Color(0xFFE91E63),
+            ),
+            SizedBox(height: 16),
+            Text(
+              'No search history yet',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            SizedBox(height: 8),
+            Text(
+              'Your search history will appear here',
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      children: [
+        // Clear button
+        Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: ElevatedButton.icon(
+            onPressed: () => _showClearSearchHistoryDialog(),
+            icon: const Icon(Icons.clear_all),
+            label: const Text('Clear Search History'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+          ),
+        ),
+        // Search history list
+        Expanded(
+          child: ListView.builder(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            itemCount: widget.searchHistory.length,
+            itemBuilder: (context, index) {
+              final historyItem = widget.searchHistory[index];
+              return TweenAnimationBuilder<double>(
+                duration: Duration(milliseconds: 200 + (index * 30)),
+                tween: Tween(begin: 0.0, end: 1.0),
+                curve: Curves.easeOutCubic,
+                builder: (context, value, child) {
+                  return Transform.translate(
+                    offset: Offset(0, 20 * (1 - value)),
+                    child: Opacity(
+                      opacity: value.clamp(0.0, 1.0),
+                      child: Card(
+                        margin: const EdgeInsets.only(bottom: 8.0),
+                        child: ListTile(
+                          leading: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: historyItem.platform == 'Rule34'
+                                  ? Colors.orange.withValues(alpha: 0.8)
+                                  : Colors.blue.withValues(alpha: 0.8),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              historyItem.platform,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          title: Text(
+                            historyItem.searchTag,
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          subtitle: Text(
+                            _formatDateTime(historyItem.searchedAt),
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                          trailing: const Icon(Icons.search),
+                          onTap: () => widget.onSearchFromHistory(
+                            historyItem.searchTag,
+                            historyItem.platform,
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildClickedImagesTab() {
+    if (widget.clickedImages.isEmpty) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.image,
+              size: 80,
+              color: Color(0xFFE91E63),
+            ),
+            SizedBox(height: 16),
+            Text(
+              'No clicked images yet',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            SizedBox(height: 8),
+            Text(
+              'Images you click on will appear here',
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      children: [
+        // Clear button
+        Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: ElevatedButton.icon(
+            onPressed: () => _showClearClickedImagesDialog(),
+            icon: const Icon(Icons.clear_all),
+            label: const Text('Clear Clicked Images'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+          ),
+        ),
+        // Clicked images grid
+        Expanded(
+          child: GridView.builder(
+            padding: const EdgeInsets.all(16),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              childAspectRatio: 1,
+              crossAxisSpacing: 8,
+              mainAxisSpacing: 8,
+            ),
+            itemCount: widget.clickedImages.length,
+            itemBuilder: (context, index) {
+              final clickedImage = widget.clickedImages[index];
+              final imagePost = clickedImage.toImagePost();
+
+              return TweenAnimationBuilder<double>(
+                duration: Duration(milliseconds: 200 + (index * 30)),
+                tween: Tween(begin: 0.0, end: 1.0),
+                curve: Curves.easeOutCubic,
+                builder: (context, value, child) {
+                  return Transform.translate(
+                    offset: Offset(0, 20 * (1 - value)),
+                    child: Opacity(
+                      opacity: value.clamp(0.0, 1.0),
+                      child: Card(
+                        child: GestureDetector(
+                          onTap: () => _showImageModal(context, imagePost),
+                          child: Column(
+                            children: [
+                              Expanded(
+                                child: Stack(
+                                  children: [
+                                    Image.network(
+                                      clickedImage.fileUrl,
+                                      fit: BoxFit.cover,
+                                      width: double.infinity,
+                                      height: double.infinity,
+                                      errorBuilder: (context, error, stackTrace) =>
+                                          const Icon(Icons.error),
+                                    ),
+                                    // Video play icon overlay (center)
+                                    if (imagePost.isVideo)
+                                      Center(
+                                        child: Container(
+                                          padding: const EdgeInsets.all(12),
+                                          decoration: const BoxDecoration(
+                                            color: Colors.black54,
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: const Icon(
+                                            Icons.play_arrow,
+                                            color: Colors.white,
+                                            size: 32,
+                                          ),
+                                        ),
+                                      ),
+                                    // Platform badge (top left)
+                                    Positioned(
+                                      top: 8,
+                                      left: 8,
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: clickedImage.platform == 'Rule34'
+                                              ? Colors.orange.withValues(alpha: 0.8)
+                                              : Colors.blue.withValues(alpha: 0.8),
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: Text(
+                                          clickedImage.platform,
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    // Time badge (bottom right)
+                                    Positioned(
+                                      bottom: 8,
+                                      right: 8,
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: Colors.black.withValues(alpha: 0.7),
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: Text(
+                                          _formatDateTime(clickedImage.clickedAt),
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 8,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.all(4),
+                                child: Text(
+                                  clickedImage.tags,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(fontSize: 10),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _formatDateTime(DateTime dateTime) {
+    final now = DateTime.now();
+    final difference = now.difference(dateTime);
+
+    if (difference.inDays > 0) {
+      return '${difference.inDays}d ago';
+    } else if (difference.inHours > 0) {
+      return '${difference.inHours}h ago';
+    } else if (difference.inMinutes > 0) {
+      return '${difference.inMinutes}m ago';
+    } else {
+      return 'Just now';
+    }
+  }
+
+  void _showClearSearchHistoryDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Clear Search History'),
+        content: const Text('Are you sure you want to clear all search history?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              widget.onClearSearchHistory();
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Search history cleared')),
+              );
+            },
+            child: const Text('Clear'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showClearClickedImagesDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Clear Clicked Images'),
+        content: const Text('Are you sure you want to clear all clicked images history?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              widget.onClearClickedImages();
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Clicked images history cleared')),
+              );
+            },
+            child: const Text('Clear'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Show media modal with animation (video or image)
+  void _showImageModal(BuildContext context, ImagePost imagePost) {
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
+      barrierColor: Colors.black54,
+      transitionDuration: const Duration(milliseconds: 300),
+      pageBuilder: (context, animation, secondaryAnimation) {
+        // Show video modal for videos, image modal for images
+        // Note: Using default settings for history page
         return imagePost.isVideo
             ? VideoModal(imagePost: imagePost, settings: const AppSettings())
             : ImageModal(imagePost: imagePost);
