@@ -8,6 +8,95 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:video_player/video_player.dart';
 import 'package:chewie/chewie.dart';
 
+// Settings model for app configuration
+class AppSettings {
+  final int gridColumns;
+  final bool autoPlayVideos;
+  final bool showFileTypeBadges;
+  final bool autoSaveToGallery;
+  final bool hapticFeedback;
+  final int resultsPerPage;
+  final bool safeSearchMode;
+  final String defaultSafeBooruTags;
+  final String defaultRule34Tags;
+  final bool showSearchHistory;
+  final bool incognitoMode;
+
+  const AppSettings({
+    this.gridColumns = 2,
+    this.autoPlayVideos = false,
+    this.showFileTypeBadges = true,
+    this.autoSaveToGallery = false,
+    this.hapticFeedback = true,
+    this.resultsPerPage = 20,
+    this.safeSearchMode = true,
+    this.defaultSafeBooruTags = '',
+    this.defaultRule34Tags = '',
+    this.showSearchHistory = true,
+    this.incognitoMode = false,
+  });
+
+  factory AppSettings.fromJson(Map<String, dynamic> json) {
+    return AppSettings(
+      gridColumns: json['gridColumns'] ?? 2,
+      autoPlayVideos: json['autoPlayVideos'] ?? false,
+      showFileTypeBadges: json['showFileTypeBadges'] ?? true,
+      autoSaveToGallery: json['autoSaveToGallery'] ?? false,
+      hapticFeedback: json['hapticFeedback'] ?? true,
+      resultsPerPage: json['resultsPerPage'] ?? 20,
+      safeSearchMode: json['safeSearchMode'] ?? true,
+      defaultSafeBooruTags: json['defaultSafeBooruTags'] ?? '',
+      defaultRule34Tags: json['defaultRule34Tags'] ?? '',
+      showSearchHistory: json['showSearchHistory'] ?? true,
+      incognitoMode: json['incognitoMode'] ?? false,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'gridColumns': gridColumns,
+      'autoPlayVideos': autoPlayVideos,
+      'showFileTypeBadges': showFileTypeBadges,
+      'autoSaveToGallery': autoSaveToGallery,
+      'hapticFeedback': hapticFeedback,
+      'resultsPerPage': resultsPerPage,
+      'safeSearchMode': safeSearchMode,
+      'defaultSafeBooruTags': defaultSafeBooruTags,
+      'defaultRule34Tags': defaultRule34Tags,
+      'showSearchHistory': showSearchHistory,
+      'incognitoMode': incognitoMode,
+    };
+  }
+
+  AppSettings copyWith({
+    int? gridColumns,
+    bool? autoPlayVideos,
+    bool? showFileTypeBadges,
+    bool? autoSaveToGallery,
+    bool? hapticFeedback,
+    int? resultsPerPage,
+    bool? safeSearchMode,
+    String? defaultSafeBooruTags,
+    String? defaultRule34Tags,
+    bool? showSearchHistory,
+    bool? incognitoMode,
+  }) {
+    return AppSettings(
+      gridColumns: gridColumns ?? this.gridColumns,
+      autoPlayVideos: autoPlayVideos ?? this.autoPlayVideos,
+      showFileTypeBadges: showFileTypeBadges ?? this.showFileTypeBadges,
+      autoSaveToGallery: autoSaveToGallery ?? this.autoSaveToGallery,
+      hapticFeedback: hapticFeedback ?? this.hapticFeedback,
+      resultsPerPage: resultsPerPage ?? this.resultsPerPage,
+      safeSearchMode: safeSearchMode ?? this.safeSearchMode,
+      defaultSafeBooruTags: defaultSafeBooruTags ?? this.defaultSafeBooruTags,
+      defaultRule34Tags: defaultRule34Tags ?? this.defaultRule34Tags,
+      showSearchHistory: showSearchHistory ?? this.showSearchHistory,
+      incognitoMode: incognitoMode ?? this.incognitoMode,
+    );
+  }
+}
+
 class ImagePost {
   final String id;
   final String fileUrl;
@@ -191,9 +280,11 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
   String? _errorMessage;
   late TabController _tabController;
   bool _isRule34Mode = false;
+  bool _isSettingsMode = false;
 
-  // How many posts to fetch per page.
-  final int _limit = 20;
+  // App settings
+  AppSettings _settings = const AppSettings();
+
   // Base URLs for different APIs
   final String safeBooruUrl = 'https://safebooru.org/index.php';
   final String rule34Url = 'https://rule34.xxx/index.php';
@@ -210,12 +301,16 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
   // Get current search tag based on active tab
   String get _currentSearchTag => _isRule34Mode ? _rule34SearchTag : _safeBooruSearchTag;
 
+  // Get current limit based on settings
+  int get _limit => _settings.resultsPerPage;
+
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
     _tabController.addListener(_onTabChanged);
     _searchController = TextEditingController(text: _safeBooruSearchTag); // Start with SafeBooru search
+    _loadSettings(); // Load app settings
     _loadStarredImages(); // Load starred images from storage
     // Don't fetch images on startup - wait for user to search
   }
@@ -232,15 +327,54 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
     if (_tabController.indexIsChanging) {
       setState(() {
         _isRule34Mode = _tabController.index == 1;
+        _isSettingsMode = _tabController.index == 2;
         _page = 1; // Reset to first page when switching tabs
         _images.clear(); // Clear current images
-        _searchController.text = _currentSearchTag; // Update search field with current tab's search
+        if (!_isSettingsMode) {
+          _searchController.text = _currentSearchTag; // Update search field with current tab's search
+        }
       });
-      // Only fetch images if there's a search tag
-      if (_currentSearchTag.trim().isNotEmpty) {
+      // Only fetch images if there's a search tag and not in settings mode
+      if (!_isSettingsMode && _currentSearchTag.trim().isNotEmpty) {
         _fetchImages(); // Fetch new images from the new API
       }
     }
+  }
+
+  // Load app settings from SharedPreferences
+  Future<void> _loadSettings() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final settingsJson = prefs.getString('app_settings');
+      if (settingsJson != null) {
+        setState(() {
+          _settings = AppSettings.fromJson(json.decode(settingsJson));
+        });
+      }
+    } catch (e) {
+      // Use default settings if loading fails
+      setState(() {
+        _settings = const AppSettings();
+      });
+    }
+  }
+
+  // Save app settings to SharedPreferences
+  Future<void> _saveSettings() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('app_settings', json.encode(_settings.toJson()));
+    } catch (e) {
+      // Handle save error silently
+    }
+  }
+
+  // Update settings and save
+  Future<void> _updateSettings(AppSettings newSettings) async {
+    setState(() {
+      _settings = newSettings;
+    });
+    await _saveSettings();
   }
 
   Future<void> _fetchImages() async {
@@ -400,8 +534,10 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
   Future<void> _toggleStarImage(ImagePost imagePost) async {
     final platform = _isRule34Mode ? 'Rule34' : 'SafeBooru';
 
-    // Add haptic feedback for better user experience
-    HapticFeedback.lightImpact();
+    // Add haptic feedback for better user experience (if enabled in settings)
+    if (_settings.hapticFeedback) {
+      HapticFeedback.lightImpact();
+    }
 
     setState(() {
       if (_starredImageIds.contains(imagePost.id)) {
@@ -469,7 +605,7 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
       pageBuilder: (context, animation, secondaryAnimation) {
         // Show video modal for videos, image modal for images
         return imagePost.isVideo
-            ? VideoModal(imagePost: imagePost)
+            ? VideoModal(imagePost: imagePost, settings: _settings)
             : ImageModal(imagePost: imagePost);
       },
       transitionBuilder: (context, animation, secondaryAnimation, child) {
@@ -516,6 +652,7 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
           tabs: const [
             Tab(text: 'SafeBooru'),
             Tab(text: 'rule34'),
+            Tab(text: 'Settings'),
           ],
         ),
       ),
@@ -536,9 +673,11 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
             ),
           );
         },
-        child: _currentSearchTag.trim().isEmpty
-            ? _buildEmptySearchState()
-            : _buildSearchResultsState(),
+        child: _isSettingsMode
+            ? _buildSettingsState()
+            : _currentSearchTag.trim().isEmpty
+                ? _buildEmptySearchState()
+                : _buildSearchResultsState(),
       ),
     );
   }
@@ -677,8 +816,8 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
                     : GridView.builder(
                         key: ValueKey('grid_$_currentSearchTag\_$_page'),
                         padding: const EdgeInsets.all(4),
-                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: _settings.gridColumns,
                           childAspectRatio: 1,
                           crossAxisSpacing: 4,
                           mainAxisSpacing: 4,
@@ -727,28 +866,29 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
                                                       ),
                                                     ),
                                                   ),
-                                                // File type badge (top left)
-                                                Positioned(
-                                                  top: 8,
-                                                  left: 8,
-                                                  child: Container(
-                                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                                    decoration: BoxDecoration(
-                                                      color: imagePost.isVideo
-                                                          ? Colors.red.withValues(alpha: 0.8)
-                                                          : Colors.blue.withValues(alpha: 0.8),
-                                                      borderRadius: BorderRadius.circular(8),
-                                                    ),
-                                                    child: Text(
-                                                      imagePost.fileType,
-                                                      style: const TextStyle(
-                                                        color: Colors.white,
-                                                        fontSize: 8,
-                                                        fontWeight: FontWeight.bold,
+                                                // File type badge (top left) - only show if enabled in settings
+                                                if (_settings.showFileTypeBadges)
+                                                  Positioned(
+                                                    top: 8,
+                                                    left: 8,
+                                                    child: Container(
+                                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                      decoration: BoxDecoration(
+                                                        color: imagePost.isVideo
+                                                            ? Colors.red.withValues(alpha: 0.8)
+                                                            : Colors.blue.withValues(alpha: 0.8),
+                                                        borderRadius: BorderRadius.circular(8),
+                                                      ),
+                                                      child: Text(
+                                                        imagePost.fileType,
+                                                        style: const TextStyle(
+                                                          color: Colors.white,
+                                                          fontSize: 8,
+                                                          fontWeight: FontWeight.bold,
+                                                        ),
                                                       ),
                                                     ),
                                                   ),
-                                                ),
                                                 // Star button overlay
                                                 Positioned(
                                                   top: 8,
@@ -840,6 +980,419 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
           ),
         ],
       );
+  }
+
+  // Build the settings interface
+  Widget _buildSettingsState() {
+    return SingleChildScrollView(
+      key: const ValueKey('settings'),
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          const Row(
+            children: [
+              Icon(Icons.settings, size: 32, color: Color(0xFFE91E63)),
+              SizedBox(width: 12),
+              Text(
+                'Settings',
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+
+          // Display Settings Section
+          _buildSettingsSection(
+            'Display Settings',
+            Icons.display_settings,
+            [
+              _buildSliderSetting(
+                'Grid Columns',
+                'Number of columns in the image grid',
+                _settings.gridColumns.toDouble(),
+                2.0,
+                4.0,
+                1.0,
+                (value) => _updateSettings(_settings.copyWith(gridColumns: value.round())),
+              ),
+              _buildSwitchSetting(
+                'Show File Type Badges',
+                'Display video/image badges on thumbnails',
+                _settings.showFileTypeBadges,
+                (value) => _updateSettings(_settings.copyWith(showFileTypeBadges: value)),
+              ),
+              _buildSwitchSetting(
+                'Auto-play Videos',
+                'Automatically start video playback when opened',
+                _settings.autoPlayVideos,
+                (value) => _updateSettings(_settings.copyWith(autoPlayVideos: value)),
+              ),
+            ],
+          ),
+
+          // Search Settings Section
+          _buildSettingsSection(
+            'Search Settings',
+            Icons.search,
+            [
+              _buildDropdownSetting(
+                'Results Per Page',
+                'Number of images to load per page',
+                _settings.resultsPerPage,
+                [10, 20, 50, 100],
+                (value) => _updateSettings(_settings.copyWith(resultsPerPage: value)),
+              ),
+              _buildSwitchSetting(
+                'Safe Search Mode',
+                'Filter explicit content (recommended)',
+                _settings.safeSearchMode,
+                (value) => _updateSettings(_settings.copyWith(safeSearchMode: value)),
+              ),
+              _buildTextFieldSetting(
+                'Default SafeBooru Tags',
+                'Default search tags for SafeBooru',
+                _settings.defaultSafeBooruTags,
+                (value) => _updateSettings(_settings.copyWith(defaultSafeBooruTags: value)),
+              ),
+              _buildTextFieldSetting(
+                'Default Rule34 Tags',
+                'Default search tags for Rule34',
+                _settings.defaultRule34Tags,
+                (value) => _updateSettings(_settings.copyWith(defaultRule34Tags: value)),
+              ),
+            ],
+          ),
+
+          // Download Settings Section
+          _buildSettingsSection(
+            'Download Settings',
+            Icons.download,
+            [
+              _buildSwitchSetting(
+                'Auto-save to Gallery',
+                'Automatically save images when viewed',
+                _settings.autoSaveToGallery,
+                (value) => _updateSettings(_settings.copyWith(autoSaveToGallery: value)),
+              ),
+            ],
+          ),
+
+          // App Settings Section
+          _buildSettingsSection(
+            'App Settings',
+            Icons.app_settings_alt,
+            [
+              _buildSwitchSetting(
+                'Haptic Feedback',
+                'Vibrate when interacting with elements',
+                _settings.hapticFeedback,
+                (value) => _updateSettings(_settings.copyWith(hapticFeedback: value)),
+              ),
+              _buildSwitchSetting(
+                'Incognito Mode',
+                'Don\'t save search history or starred images',
+                _settings.incognitoMode,
+                (value) => _updateSettings(_settings.copyWith(incognitoMode: value)),
+              ),
+            ],
+          ),
+
+          // Privacy Settings Section
+          _buildSettingsSection(
+            'Privacy Settings',
+            Icons.privacy_tip,
+            [
+              _buildActionSetting(
+                'Clear Search History',
+                'Remove all saved search history',
+                Icons.history,
+                () => _clearSearchHistory(),
+              ),
+              _buildActionSetting(
+                'Clear Starred Images',
+                'Remove all starred images',
+                Icons.star_border,
+                () => _clearStarredImages(),
+              ),
+              _buildActionSetting(
+                'Reset All Settings',
+                'Reset all settings to default values',
+                Icons.restore,
+                () => _resetSettings(),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 32),
+
+          // App Info
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.grey.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Column(
+              children: [
+                Text(
+                  'Kasane Teto Image Browser',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFFE91E63),
+                  ),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  'Version 1.0.0',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey,
+                  ),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  'A Flutter app for browsing Kasane Teto images from SafeBooru and Rule34',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Helper method to build settings sections
+  Widget _buildSettingsSection(String title, IconData icon, List<Widget> children) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(icon, color: const Color(0xFFE91E63), size: 20),
+            const SizedBox(width: 8),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.grey.withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(children: children),
+        ),
+        const SizedBox(height: 24),
+      ],
+    );
+  }
+
+  // Helper method to build switch settings
+  Widget _buildSwitchSetting(String title, String subtitle, bool value, Function(bool) onChanged) {
+    return ListTile(
+      title: Text(title),
+      subtitle: Text(subtitle, style: const TextStyle(fontSize: 12)),
+      trailing: Switch(
+        value: value,
+        onChanged: onChanged,
+        activeColor: const Color(0xFFE91E63),
+      ),
+    );
+  }
+
+  // Helper method to build slider settings
+  Widget _buildSliderSetting(String title, String subtitle, double value, double min, double max, double divisions, Function(double) onChanged) {
+    return ListTile(
+      title: Text(title),
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(subtitle, style: const TextStyle(fontSize: 12)),
+          const SizedBox(height: 8),
+          Slider(
+            value: value,
+            min: min,
+            max: max,
+            divisions: divisions.toInt(),
+            label: value.round().toString(),
+            onChanged: onChanged,
+            activeColor: const Color(0xFFE91E63),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Helper method to build dropdown settings
+  Widget _buildDropdownSetting(String title, String subtitle, int value, List<int> options, Function(int) onChanged) {
+    return ListTile(
+      title: Text(title),
+      subtitle: Text(subtitle, style: const TextStyle(fontSize: 12)),
+      trailing: DropdownButton<int>(
+        value: value,
+        items: options.map((option) {
+          return DropdownMenuItem<int>(
+            value: option,
+            child: Text(option.toString()),
+          );
+        }).toList(),
+        onChanged: (newValue) {
+          if (newValue != null) {
+            onChanged(newValue);
+          }
+        },
+      ),
+    );
+  }
+
+  // Helper method to build text field settings
+  Widget _buildTextFieldSetting(String title, String subtitle, String value, Function(String) onChanged) {
+    return ListTile(
+      title: Text(title),
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(subtitle, style: const TextStyle(fontSize: 12)),
+          const SizedBox(height: 8),
+          TextField(
+            controller: TextEditingController(text: value),
+            decoration: InputDecoration(
+              hintText: 'Enter tags...',
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            ),
+            onChanged: onChanged,
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Helper method to build action settings
+  Widget _buildActionSetting(String title, String subtitle, IconData icon, VoidCallback onTap) {
+    return ListTile(
+      leading: Icon(icon, color: const Color(0xFFE91E63)),
+      title: Text(title),
+      subtitle: Text(subtitle, style: const TextStyle(fontSize: 12)),
+      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+      onTap: onTap,
+    );
+  }
+
+  // Clear search history
+  Future<void> _clearSearchHistory() async {
+    // Show confirmation dialog
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Clear Search History'),
+        content: const Text('Are you sure you want to clear all search history?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Clear'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      // Clear search history logic would go here
+      // For now, just show a snackbar
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Search history cleared')),
+        );
+      }
+    }
+  }
+
+  // Clear starred images
+  Future<void> _clearStarredImages() async {
+    // Show confirmation dialog
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Clear Starred Images'),
+        content: const Text('Are you sure you want to remove all starred images?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Clear'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      setState(() {
+        _starredImages.clear();
+        _starredImageIds.clear();
+      });
+      await _saveStarredImages();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Starred images cleared')),
+        );
+      }
+    }
+  }
+
+  // Reset all settings
+  Future<void> _resetSettings() async {
+    // Show confirmation dialog
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Reset Settings'),
+        content: const Text('Are you sure you want to reset all settings to default values?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Reset'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await _updateSettings(const AppSettings());
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Settings reset to defaults')),
+        );
+      }
+    }
   }
 }
 
@@ -1022,8 +1575,9 @@ class ImageModal extends StatelessWidget {
 // Video Player Modal widget for displaying videos with controls
 class VideoModal extends StatefulWidget {
   final ImagePost imagePost;
+  final AppSettings settings;
 
-  const VideoModal({super.key, required this.imagePost});
+  const VideoModal({super.key, required this.imagePost, required this.settings});
 
   @override
   State<VideoModal> createState() => _VideoModalState();
@@ -1052,7 +1606,7 @@ class _VideoModalState extends State<VideoModal> {
       if (mounted) {
         _chewieController = ChewieController(
           videoPlayerController: _videoController,
-          autoPlay: false,
+          autoPlay: widget.settings.autoPlayVideos,
           looping: true,
           allowFullScreen: true,
           allowMuting: true,
@@ -1520,8 +2074,9 @@ class StarredImagesPage extends StatelessWidget {
       transitionDuration: const Duration(milliseconds: 300),
       pageBuilder: (context, animation, secondaryAnimation) {
         // Show video modal for videos, image modal for images
+        // Note: Using default settings for starred images page
         return imagePost.isVideo
-            ? VideoModal(imagePost: imagePost)
+            ? VideoModal(imagePost: imagePost, settings: const AppSettings())
             : ImageModal(imagePost: imagePost);
       },
       transitionBuilder: (context, animation, secondaryAnimation, child) {
