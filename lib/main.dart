@@ -237,7 +237,7 @@ class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Kasane Teto Image Browser',
+      title: 'Tuff Image Browser',
       theme: ThemeData(
         primarySwatch: Colors.red, // Changed to red to match Teto's color scheme
         colorScheme: ColorScheme.fromSeed(
@@ -1140,7 +1140,7 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
             child: const Column(
               children: [
                 Text(
-                  'Kasane Teto Image Browser',
+                  'Tuff Teto Image Browser',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -1149,7 +1149,7 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
                 ),
                 SizedBox(height: 8),
                 Text(
-                  'Version 1.0.0',
+                  'Version 3.0.1',
                   style: TextStyle(
                     fontSize: 14,
                     color: Colors.grey,
@@ -1157,7 +1157,7 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
                 ),
                 SizedBox(height: 8),
                 Text(
-                  'A Flutter app for browsing Kasane Teto images from SafeBooru and Rule34',
+                  'A Flutter app for browsing images from SafeBooru and Rule34',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 12,
