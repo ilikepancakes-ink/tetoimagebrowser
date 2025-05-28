@@ -754,7 +754,7 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
   // Build the search results interface when a search has been performed
   Widget _buildSearchResultsState() {
     return Column(
-      key: ValueKey('search_results_$_currentSearchTag\_$_isRule34Mode'),
+      key: ValueKey('search_results_${_currentSearchTag}_$_isRule34Mode'),
       children: [
         // Search bar
         Container(
@@ -814,7 +814,7 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
                         child: Text(_errorMessage!),
                       )
                     : GridView.builder(
-                        key: ValueKey('grid_$_currentSearchTag\_$_page'),
+                        key: ValueKey('grid_${_currentSearchTag}_$_page'),
                         padding: const EdgeInsets.all(4),
                         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount: _settings.gridColumns,
