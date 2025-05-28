@@ -1,12 +1,104 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:dio/dio.dart';
-import 'package:gal/gal.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:video_player/video_player.dart';
 import 'package:chewie/chewie.dart';
+import 'package:path_provider/path_provider.dart';
+
+// Helper function to get or create the custom images directory in user's Pictures folder
+Future<Directory> getCustomImagesDirectory() async {
+  // Get the user's Pictures directory
+  Directory? picturesDir;
+
+  if (Platform.isWindows) {
+    // On Windows, get the Pictures folder
+    final userProfile = Platform.environment['USERPROFILE'];
+    if (userProfile != null) {
+      picturesDir = Directory('$userProfile\\Pictures');
+    }
+  } else if (Platform.isMacOS) {
+    // On macOS, get the Pictures folder
+    final homeDir = Platform.environment['HOME'];
+    if (homeDir != null) {
+      picturesDir = Directory('$homeDir/Pictures');
+    }
+  } else if (Platform.isLinux) {
+    // On Linux, get the Pictures folder
+    final homeDir = Platform.environment['HOME'];
+    if (homeDir != null) {
+      picturesDir = Directory('$homeDir/Pictures');
+    }
+  }
+
+  // Fallback to documents directory if Pictures directory is not available
+  if (picturesDir == null || !await picturesDir.exists()) {
+    final appDocumentsDir = await getApplicationDocumentsDirectory();
+    picturesDir = appDocumentsDir;
+  }
+
+  // Create the "tuff image browser" folder inside Pictures
+  final customDir = Directory('${picturesDir.path}${Platform.pathSeparator}tuff image browser');
+
+  try {
+    if (!await customDir.exists()) {
+      await customDir.create(recursive: true);
+    }
+    return customDir;
+  } catch (e) {
+    // If we can't create in Pictures, fallback to documents directory
+    final appDocumentsDir = await getApplicationDocumentsDirectory();
+    final fallbackDir = Directory('${appDocumentsDir.path}${Platform.pathSeparator}tuff image browser');
+    if (!await fallbackDir.exists()) {
+      await fallbackDir.create(recursive: true);
+    }
+    return fallbackDir;
+  }
+}
+
+// Helper function to automatically save image/video to custom directory
+Future<void> autoSaveMedia(String mediaUrl, {bool isVideo = false}) async {
+  try {
+    // Download media
+    final dio = Dio();
+    final response = await dio.get(
+      mediaUrl,
+      options: Options(responseType: ResponseType.bytes),
+    );
+
+    if (response.data == null) {
+      return;
+    }
+
+    // Get custom directory
+    final customDir = await getCustomImagesDirectory();
+
+    // Extract file extension from URL
+    final uri = Uri.parse(mediaUrl);
+    final pathSegments = uri.pathSegments;
+    String extension = isVideo ? '.mp4' : '.jpg'; // default extensions
+    if (pathSegments.isNotEmpty) {
+      final fileName = pathSegments.last;
+      final dotIndex = fileName.lastIndexOf('.');
+      if (dotIndex != -1) {
+        extension = fileName.substring(dotIndex);
+      }
+    }
+
+    // Create unique filename
+    final prefix = isVideo ? 'teto_video' : 'teto_image';
+    final fileName = '${prefix}_${DateTime.now().millisecondsSinceEpoch}$extension';
+    final file = File('${customDir.path}/$fileName');
+
+    // Save file to custom directory
+    await file.writeAsBytes(response.data);
+  } catch (e) {
+    // Silently fail for auto-save to not interrupt user experience
+  }
+}
 
 // Settings model for app configuration
 class AppSettings {
@@ -840,6 +932,9 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
     final platform = _isRule34Mode ? 'Rule34' : 'SafeBooru';
     _addToClickedImages(imagePost, platform);
 
+    // Automatically save media to custom directory
+    autoSaveMedia(imagePost.fileUrl, isVideo: imagePost.isVideo);
+
     showGeneralDialog(
       context: context,
       barrierDismissible: true,
@@ -1380,6 +1475,12 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
                 Icons.restore,
                 () => _resetSettings(),
               ),
+              _buildActionSetting(
+                'Show Save Directory',
+                'View the Pictures/tuff image browser folder location',
+                Icons.folder_open,
+                () => _showSaveDirectory(),
+              ),
             ],
           ),
 
@@ -1685,6 +1786,63 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
       }
     }
   }
+
+  // Show save directory information
+  Future<void> _showSaveDirectory() async {
+    try {
+      final customDir = await getCustomImagesDirectory();
+      final dirPath = customDir.path;
+
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Save Directory'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Images and videos are automatically saved to your Pictures folder:'),
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.grey.withValues(alpha: 0.3)),
+                  ),
+                  child: SelectableText(
+                    dirPath,
+                    style: const TextStyle(
+                      fontFamily: 'monospace',
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'This directory is created automatically when you view images.',
+                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error getting directory: ${e.toString()}')),
+        );
+      }
+    }
+  }
 }
 
 // Modal widget for displaying image with save/copy options
@@ -1789,20 +1947,9 @@ class ImageModal extends StatelessWidget {
     );
   }
 
-  // Save image to device gallery
+  // Save image to custom directory
   Future<void> _saveImage(BuildContext context, String imageUrl) async {
     try {
-      // Check if we have permission to save images
-      if (!await Gal.hasAccess()) {
-        // Request permission
-        if (!await Gal.requestAccess()) {
-          if (context.mounted) {
-            _showSnackBar(context, 'Storage permission is required to save images');
-          }
-          return;
-        }
-      }
-
       // Show loading indicator
       if (context.mounted) {
         _showSnackBar(context, 'Downloading image...');
@@ -1822,14 +1969,30 @@ class ImageModal extends StatelessWidget {
         return;
       }
 
-      // Save to gallery using Gal
-      await Gal.putImageBytes(
-        response.data,
-        name: 'teto_image_${DateTime.now().millisecondsSinceEpoch}',
-      );
+      // Get custom directory
+      final customDir = await getCustomImagesDirectory();
+
+      // Extract file extension from URL
+      final uri = Uri.parse(imageUrl);
+      final pathSegments = uri.pathSegments;
+      String extension = '.jpg'; // default extension
+      if (pathSegments.isNotEmpty) {
+        final fileName = pathSegments.last;
+        final dotIndex = fileName.lastIndexOf('.');
+        if (dotIndex != -1) {
+          extension = fileName.substring(dotIndex);
+        }
+      }
+
+      // Create unique filename
+      final fileName = 'teto_image_${DateTime.now().millisecondsSinceEpoch}$extension';
+      final file = File('${customDir.path}/$fileName');
+
+      // Save file to custom directory
+      await file.writeAsBytes(response.data);
 
       if (context.mounted) {
-        _showSnackBar(context, 'Image saved to gallery successfully!');
+        _showSnackBar(context, 'Image saved to Pictures/tuff image browser successfully!');
       }
     } catch (e) {
       if (context.mounted) {
@@ -2086,20 +2249,9 @@ class _VideoModalState extends State<VideoModal> {
     );
   }
 
-  // Save video to device gallery
+  // Save video to custom directory
   Future<void> _saveVideo(BuildContext context, String videoUrl) async {
     try {
-      // Check if we have permission to save videos
-      if (!await Gal.hasAccess()) {
-        // Request permission
-        if (!await Gal.requestAccess()) {
-          if (context.mounted) {
-            _showSnackBar(context, 'Storage permission is required to save videos');
-          }
-          return;
-        }
-      }
-
       // Show loading indicator
       if (context.mounted) {
         _showSnackBar(context, 'Downloading video...');
@@ -2119,14 +2271,30 @@ class _VideoModalState extends State<VideoModal> {
         return;
       }
 
-      // Save to gallery using Gal (videos are saved as image bytes in Gal)
-      await Gal.putImageBytes(
-        response.data,
-        name: 'teto_video_${DateTime.now().millisecondsSinceEpoch}',
-      );
+      // Get custom directory
+      final customDir = await getCustomImagesDirectory();
+
+      // Extract file extension from URL
+      final uri = Uri.parse(videoUrl);
+      final pathSegments = uri.pathSegments;
+      String extension = '.mp4'; // default extension for videos
+      if (pathSegments.isNotEmpty) {
+        final fileName = pathSegments.last;
+        final dotIndex = fileName.lastIndexOf('.');
+        if (dotIndex != -1) {
+          extension = fileName.substring(dotIndex);
+        }
+      }
+
+      // Create unique filename
+      final fileName = 'teto_video_${DateTime.now().millisecondsSinceEpoch}$extension';
+      final file = File('${customDir.path}/$fileName');
+
+      // Save file to custom directory
+      await file.writeAsBytes(response.data);
 
       if (context.mounted) {
-        _showSnackBar(context, 'Video saved to gallery successfully!');
+        _showSnackBar(context, 'Video saved to Pictures/tuff image browser successfully!');
       }
     } catch (e) {
       if (context.mounted) {
@@ -2357,6 +2525,9 @@ class StarredImagesPage extends StatelessWidget {
 
   // Show media modal with animation (video or image)
   void _showImageModal(BuildContext context, ImagePost imagePost) {
+    // Automatically save media to custom directory
+    autoSaveMedia(imagePost.fileUrl, isVideo: imagePost.isVideo);
+
     showGeneralDialog(
       context: context,
       barrierDismissible: true,
@@ -2804,6 +2975,9 @@ class _HistoryPageState extends State<HistoryPage> with SingleTickerProviderStat
 
   // Show media modal with animation (video or image)
   void _showImageModal(BuildContext context, ImagePost imagePost) {
+    // Automatically save media to custom directory
+    autoSaveMedia(imagePost.fileUrl, isVideo: imagePost.isVideo);
+
     showGeneralDialog(
       context: context,
       barrierDismissible: true,
