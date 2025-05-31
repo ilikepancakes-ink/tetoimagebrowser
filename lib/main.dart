@@ -1694,7 +1694,7 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Clear Clicked Images History'),
-        content: const Text('Are you sure you want to clear all clicked images history?'),
+        content: const Text('Are you sure you want to clear all history?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
