@@ -126,3 +126,19 @@ if(NOT CMAKE_BUILD_TYPE MATCHES "Debug")
   install(FILES "${AOT_LIBRARY}" DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
     COMPONENT Runtime)
 endif()
+
+# Install the application icon to bundle data directory
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/runner/resources/app_icon.ico"
+  DESTINATION "${INSTALL_BUNDLE_DATA_DIR}"
+  COMPONENT Runtime)
+
+# Install the application icon to system icon directory (for desktop integration)
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/runner/resources/app_icon.ico"
+  DESTINATION "${CMAKE_INSTALL_PREFIX}/share/icons/hicolor/48x48/apps"
+  RENAME "app_icon.ico"
+  COMPONENT Runtime)
+
+# Install the desktop entry file
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/tetoimagebrowser.desktop"
+  DESTINATION "${CMAKE_INSTALL_PREFIX}/share/applications"
+  COMPONENT Runtime)

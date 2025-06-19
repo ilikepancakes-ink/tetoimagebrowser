@@ -50,25 +50,19 @@ exec ./tetoimagebrowser "$@"
 EOF
     chmod +x "$pkgdir/usr/bin/$pkgname"
     
-    # Install desktop file
-    cat > "$pkgdir/usr/share/applications/$pkgname.desktop" << 'EOF'
-[Desktop Entry]
-Name=tuff Image Browser
-Comment=A Flutter-based image browser application
-Exec=tetoimagebrowser
-Icon=tetoimagebrowser
-Type=Application
-Categories=Graphics;Photography;Viewer;
-StartupNotify=true
-EOF
-    
-    # Install icon (using web favicon as fallback)
-    if [ -f "web/favicon.png" ]; then
-        install -Dm644 "web/favicon.png" "$pkgdir/usr/share/pixmaps/$pkgname.png"
+    # Install desktop file (use the one from the build bundle)
+    if [ -f "build/linux/x64/release/bundle/share/applications/tetoimagebrowser.desktop" ]; then
+        install -Dm644 "build/linux/x64/release/bundle/share/applications/tetoimagebrowser.desktop" "$pkgdir/usr/share/applications/$pkgname.desktop"
     fi
-    
-    # Install macOS icon if available (better quality)
-    if [ -f "macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_512.png" ]; then
-        install -Dm644 "macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_512.png" "$pkgdir/usr/share/pixmaps/$pkgname.png"
+
+    # Install icon from Windows resources (now available in Linux build)
+    if [ -f "build/linux/x64/release/bundle/data/app_icon.ico" ]; then
+        install -Dm644 "build/linux/x64/release/bundle/data/app_icon.ico" "$pkgdir/usr/share/pixmaps/$pkgname.ico"
+    fi
+
+    # Also install to hicolor icon theme directory for better desktop integration
+    if [ -f "build/linux/x64/release/bundle/share/icons/hicolor/48x48/apps/app_icon.ico" ]; then
+        install -dm755 "$pkgdir/usr/share/icons/hicolor/48x48/apps"
+        install -Dm644 "build/linux/x64/release/bundle/share/icons/hicolor/48x48/apps/app_icon.ico" "$pkgdir/usr/share/icons/hicolor/48x48/apps/app_icon.ico"
     fi
 }

@@ -6,9 +6,9 @@ xdata = pkgtype=pkg
 pkgver = 3.0.1-1
 pkgdesc = tuff Image Browser - A Flutter-based image browser application
 url = https://internettools.org/
-builddate = 1750364634
+builddate = 1750366041
 packager = Unknown Packager
-size = 25574872
+size = 27267876
 arch = x86_64
 license = custom
 depend = gtk3

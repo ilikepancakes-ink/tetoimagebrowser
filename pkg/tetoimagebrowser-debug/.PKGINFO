@@ -6,7 +6,7 @@ xdata = pkgtype=debug
 pkgver = 3.0.1-1
 pkgdesc = Detached debugging symbols for tetoimagebrowser
 url = https://internettools.org/
-builddate = 1750364634
+builddate = 1750366041
 packager = Unknown Packager
 size = 26931240
 arch = x86_64
