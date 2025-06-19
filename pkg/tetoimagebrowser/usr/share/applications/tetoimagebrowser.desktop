@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=tuff Image Browser
+Comment=A Flutter-based image browser application
+Exec=tetoimagebrowser
+Icon=tetoimagebrowser
+Type=Application
+Categories=Graphics;Photography;Viewer;
+StartupNotify=true

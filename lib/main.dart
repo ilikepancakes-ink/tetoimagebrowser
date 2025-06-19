@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:video_player/video_player.dart';
 import 'package:chewie/chewie.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:gal/gal.dart';
 
 // Helper function to get or create the custom images directory in user's Pictures folder
 Future<Directory> getCustomImagesDirectory() async {
@@ -31,6 +32,33 @@ Future<Directory> getCustomImagesDirectory() async {
     final homeDir = Platform.environment['HOME'];
     if (homeDir != null) {
       picturesDir = Directory('$homeDir/Pictures');
+    }
+  } else if (Platform.isIOS) {
+    // On iOS, use the app's Documents directory since we can't access the system Photos library directly
+    // For saving to Photos library, we'll use the gal package in the save functions
+    final appDocumentsDir = await getApplicationDocumentsDirectory();
+    picturesDir = appDocumentsDir;
+  } else if (Platform.isAndroid) {
+    // On Android, try to get external storage directory first, fallback to app documents
+    try {
+      // Try to get the external storage directory (usually /storage/emulated/0)
+      final externalDir = await getExternalStorageDirectory();
+      if (externalDir != null) {
+        // Create Pictures directory in external storage if it doesn't exist
+        final androidPicturesDir = Directory('${externalDir.path}/Pictures');
+        if (!await androidPicturesDir.exists()) {
+          await androidPicturesDir.create(recursive: true);
+        }
+        picturesDir = androidPicturesDir;
+      } else {
+        // Fallback to app documents directory
+        final appDocumentsDir = await getApplicationDocumentsDirectory();
+        picturesDir = appDocumentsDir;
+      }
+    } catch (e) {
+      // If external storage is not available, use app documents directory
+      final appDocumentsDir = await getApplicationDocumentsDirectory();
+      picturesDir = appDocumentsDir;
     }
   }
 
@@ -95,6 +123,22 @@ Future<void> autoSaveMedia(String mediaUrl, {bool isVideo = false}) async {
 
     // Save file to custom directory
     await file.writeAsBytes(response.data);
+
+    // On mobile platforms, also save to the device's photo gallery using gal package
+    if (Platform.isIOS || Platform.isAndroid) {
+      try {
+        if (isVideo) {
+          // Save video to gallery
+          await Gal.putVideo(file.path);
+        } else {
+          // Save image to gallery
+          await Gal.putImage(file.path);
+        }
+      } catch (e) {
+        // Silently fail if gallery save fails (might be due to permissions)
+        // The file is still saved to the app directory
+      }
+    }
   } catch (e) {
     // Silently fail for auto-save to not interrupt user experience
   }
@@ -1419,7 +1463,9 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
             [
               _buildSwitchSetting(
                 'Auto-save to Gallery',
-                'Automatically save images when viewed',
+                Platform.isIOS || Platform.isAndroid
+                    ? 'Automatically save images/videos to app directory and photo gallery when viewed'
+                    : 'Automatically save images/videos to Pictures folder when viewed',
                 _settings.autoSaveToGallery,
                 (value) => _updateSettings(_settings.copyWith(autoSaveToGallery: value)),
               ),
@@ -1477,7 +1523,9 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
               ),
               _buildActionSetting(
                 'Show Save Directory',
-                'View the Pictures/tuff image browser folder location',
+                Platform.isIOS || Platform.isAndroid
+                    ? 'View the app directory where files are saved'
+                    : 'View the Pictures/tuff image browser folder location',
                 Icons.folder_open,
                 () => _showSaveDirectory(),
               ),
@@ -1802,7 +1850,9 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Images and videos are automatically saved to your Pictures folder:'),
+                Text(Platform.isIOS || Platform.isAndroid
+                    ? 'Images and videos are saved to the app directory and photo gallery:'
+                    : 'Images and videos are automatically saved to your Pictures folder:'),
                 const SizedBox(height: 16),
                 Container(
                   padding: const EdgeInsets.all(12),
@@ -1820,9 +1870,11 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
                   ),
                 ),
                 const SizedBox(height: 16),
-                const Text(
-                  'This directory is created automatically when you view images.',
-                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                Text(
+                  Platform.isIOS || Platform.isAndroid
+                      ? 'This directory is created automatically when you view images. On mobile, files are also saved to your photo gallery.'
+                      : 'This directory is created automatically when you view images.',
+                  style: const TextStyle(fontSize: 12, color: Colors.grey),
                 ),
               ],
             ),
@@ -1991,8 +2043,24 @@ class ImageModal extends StatelessWidget {
       // Save file to custom directory
       await file.writeAsBytes(response.data);
 
-      if (context.mounted) {
-        _showSnackBar(context, 'Image saved to Pictures/tuff image browser successfully!');
+      // On mobile platforms, also save to the device's photo gallery using gal package
+      if (Platform.isIOS || Platform.isAndroid) {
+        try {
+          await Gal.putImage(file.path);
+          if (context.mounted) {
+            _showSnackBar(context, 'Image saved to app directory and photo gallery successfully!');
+          }
+        } catch (e) {
+          // If gallery save fails, still show success for app directory save
+          if (context.mounted) {
+            _showSnackBar(context, 'Image saved to app directory successfully! (Gallery save failed: permissions may be required)');
+          }
+        }
+      } else {
+        // Desktop platforms
+        if (context.mounted) {
+          _showSnackBar(context, 'Image saved to Pictures/tuff image browser successfully!');
+        }
       }
     } catch (e) {
       if (context.mounted) {
@@ -2293,8 +2361,24 @@ class _VideoModalState extends State<VideoModal> {
       // Save file to custom directory
       await file.writeAsBytes(response.data);
 
-      if (context.mounted) {
-        _showSnackBar(context, 'Video saved to Pictures/tuff image browser successfully!');
+      // On mobile platforms, also save to the device's photo gallery using gal package
+      if (Platform.isIOS || Platform.isAndroid) {
+        try {
+          await Gal.putVideo(file.path);
+          if (context.mounted) {
+            _showSnackBar(context, 'Video saved to app directory and photo gallery successfully!');
+          }
+        } catch (e) {
+          // If gallery save fails, still show success for app directory save
+          if (context.mounted) {
+            _showSnackBar(context, 'Video saved to app directory successfully! (Gallery save failed: permissions may be required)');
+          }
+        }
+      } else {
+        // Desktop platforms
+        if (context.mounted) {
+          _showSnackBar(context, 'Video saved to Pictures/tuff image browser successfully!');
+        }
       }
     } catch (e) {
       if (context.mounted) {

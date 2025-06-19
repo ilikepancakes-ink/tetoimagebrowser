@@ -1,0 +1,15 @@
+pkgbase = tetoimagebrowser
+	pkgdesc = tuff Image Browser - A Flutter-based image browser application
+	pkgver = 3.0.1
+	pkgrel = 1
+	url = https://internettools.org/
+	arch = x86_64
+	license = custom
+	makedepends = ninja
+	makedepends = clang
+	makedepends = cmake
+	makedepends = pkg-config
+	depends = gtk3
+	depends = glibc
+
+pkgname = tetoimagebrowser
