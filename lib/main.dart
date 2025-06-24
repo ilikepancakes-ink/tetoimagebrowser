@@ -155,6 +155,7 @@ class AppSettings {
   final bool safeSearchMode;
   final String defaultSafeBooruTags;
   final String defaultRule34Tags;
+  final String defaultYandeTags;
   final bool showSearchHistory;
   final bool incognitoMode;
 
@@ -168,6 +169,7 @@ class AppSettings {
     this.safeSearchMode = true,
     this.defaultSafeBooruTags = '',
     this.defaultRule34Tags = '',
+    this.defaultYandeTags = '',
     this.showSearchHistory = true,
     this.incognitoMode = false,
   });
@@ -183,6 +185,7 @@ class AppSettings {
       safeSearchMode: json['safeSearchMode'] ?? true,
       defaultSafeBooruTags: json['defaultSafeBooruTags'] ?? '',
       defaultRule34Tags: json['defaultRule34Tags'] ?? '',
+      defaultYandeTags: json['defaultYandeTags'] ?? '',
       showSearchHistory: json['showSearchHistory'] ?? true,
       incognitoMode: json['incognitoMode'] ?? false,
     );
@@ -199,6 +202,7 @@ class AppSettings {
       'safeSearchMode': safeSearchMode,
       'defaultSafeBooruTags': defaultSafeBooruTags,
       'defaultRule34Tags': defaultRule34Tags,
+      'defaultYandeTags': defaultYandeTags,
       'showSearchHistory': showSearchHistory,
       'incognitoMode': incognitoMode,
     };
@@ -214,6 +218,7 @@ class AppSettings {
     bool? safeSearchMode,
     String? defaultSafeBooruTags,
     String? defaultRule34Tags,
+    String? defaultYandeTags,
     bool? showSearchHistory,
     bool? incognitoMode,
   }) {
@@ -227,6 +232,7 @@ class AppSettings {
       safeSearchMode: safeSearchMode ?? this.safeSearchMode,
       defaultSafeBooruTags: defaultSafeBooruTags ?? this.defaultSafeBooruTags,
       defaultRule34Tags: defaultRule34Tags ?? this.defaultRule34Tags,
+      defaultYandeTags: defaultYandeTags ?? this.defaultYandeTags,
       showSearchHistory: showSearchHistory ?? this.showSearchHistory,
       incognitoMode: incognitoMode ?? this.incognitoMode,
     );
@@ -245,6 +251,15 @@ class ImagePost {
   });
 
   factory ImagePost.fromJson(Map<String, dynamic> json) {
+    return ImagePost(
+      id: json['id']?.toString() ?? '',
+      fileUrl: json['file_url'] ?? '',
+      tags: json['tags'] ?? '',
+    );
+  }
+
+  // Factory method for yande.re JSON format
+  factory ImagePost.fromYandeJson(Map<String, dynamic> json) {
     return ImagePost(
       id: json['id']?.toString() ?? '',
       fileUrl: json['file_url'] ?? '',
@@ -290,7 +305,7 @@ class StarredImage {
   final String id;
   final String fileUrl;
   final String tags;
-  final String platform; // 'SafeBooru' or 'Rule34'
+  final String platform; // 'SafeBooru', 'Rule34', or 'Yande.re'
   final DateTime starredAt;
 
   StarredImage({
@@ -334,7 +349,7 @@ class StarredImage {
 // Model for search history
 class SearchHistoryItem {
   final String searchTag;
-  final String platform; // 'SafeBooru' or 'Rule34'
+  final String platform; // 'SafeBooru', 'Rule34', or 'Yande.re'
   final DateTime searchedAt;
 
   SearchHistoryItem({
@@ -365,7 +380,7 @@ class ClickedImageItem {
   final String id;
   final String fileUrl;
   final String tags;
-  final String platform; // 'SafeBooru' or 'Rule34'
+  final String platform; // 'SafeBooru', 'Rule34', or 'Yande.re'
   final DateTime clickedAt;
 
   ClickedImageItem({
@@ -491,6 +506,7 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
   String? _errorMessage;
   late TabController _tabController;
   bool _isRule34Mode = false;
+  bool _isYandeMode = false;
   bool _isSettingsMode = false;
 
   // App settings
@@ -499,11 +515,13 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
   // Base URLs for different APIs
   final String safeBooruUrl = 'https://safebooru.org/index.php';
   final String rule34Url = 'https://rule34.xxx/index.php';
+  final String yandeUrl = 'https://yande.re';
 
   // Search functionality
   late TextEditingController _searchController;
   String _safeBooruSearchTag = '';
   String _rule34SearchTag = '';
+  String _yandeSearchTag = '';
 
   // Starred images functionality
   List<StarredImage> _starredImages = [];
@@ -514,7 +532,11 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
   List<ClickedImageItem> _clickedImages = [];
 
   // Get current search tag based on active tab
-  String get _currentSearchTag => _isRule34Mode ? _rule34SearchTag : _safeBooruSearchTag;
+  String get _currentSearchTag {
+    if (_isRule34Mode) return _rule34SearchTag;
+    if (_isYandeMode) return _yandeSearchTag;
+    return _safeBooruSearchTag;
+  }
 
   // Get current limit based on settings
   int get _limit => _settings.resultsPerPage;
@@ -522,7 +544,7 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
     _tabController.addListener(_onTabChanged);
     _searchController = TextEditingController(text: _safeBooruSearchTag); // Start with SafeBooru search
     _loadSettings(); // Load app settings
@@ -543,7 +565,8 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
     if (_tabController.indexIsChanging) {
       setState(() {
         _isRule34Mode = _tabController.index == 1;
-        _isSettingsMode = _tabController.index == 2;
+        _isYandeMode = _tabController.index == 2;
+        _isSettingsMode = _tabController.index == 3;
         _page = 1; // Reset to first page when switching tabs
         _images.clear(); // Clear current images
         if (!_isSettingsMode) {
@@ -599,12 +622,17 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
       _errorMessage = null;
     });
 
-    // Choose the appropriate base URL based on current mode
-    final String baseUrl = _isRule34Mode ? rule34Url : safeBooruUrl;
+    String apiUrl;
 
-    // Construct the API endpoint URL.
-    // "json=1" returns a JSON-formatted result and "pid" is the page number.
-    final String apiUrl = '$baseUrl?page=dapi&s=post&q=index&json=1&pid=$_page&limit=$_limit&tags=$_currentSearchTag';
+    if (_isYandeMode) {
+      // Yande.re API format: /post.json?page=X&limit=Y&tags=Z
+      apiUrl = '$yandeUrl/post.json?page=$_page&limit=$_limit&tags=$_currentSearchTag';
+    } else {
+      // SafeBooru and Rule34 API format
+      final String baseUrl = _isRule34Mode ? rule34Url : safeBooruUrl;
+      apiUrl = '$baseUrl?page=dapi&s=post&q=index&json=1&pid=$_page&limit=$_limit&tags=$_currentSearchTag';
+    }
+
     final Uri uri = Uri.parse(apiUrl);
 
     try {
@@ -615,8 +643,13 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
         List<dynamic> decoded = json.decode(response.body);
 
         if (decoded.isNotEmpty) {
-          List<ImagePost> posts =
-              decoded.map((json) => ImagePost.fromJson(json)).toList();
+          List<ImagePost> posts;
+          if (_isYandeMode) {
+            // Yande.re has a different JSON structure
+            posts = decoded.map((json) => ImagePost.fromYandeJson(json)).toList();
+          } else {
+            posts = decoded.map((json) => ImagePost.fromJson(json)).toList();
+          }
           setState(() {
             _images = posts;
           });
@@ -673,6 +706,8 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
       // Update the appropriate search tag based on current tab
       if (_isRule34Mode) {
         _rule34SearchTag = searchText;
+      } else if (_isYandeMode) {
+        _yandeSearchTag = searchText;
       } else {
         _safeBooruSearchTag = searchText;
       }
@@ -681,7 +716,7 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
     });
 
     // Add to search history
-    final platform = _isRule34Mode ? 'Rule34' : 'SafeBooru';
+    final platform = _isRule34Mode ? 'Rule34' : (_isYandeMode ? 'Yande.re' : 'SafeBooru');
     _addToSearchHistory(searchText, platform);
 
     _fetchImages();
@@ -690,9 +725,10 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
   // Clear search and return to home state
   void _goToHome() {
     setState(() {
-      // Clear search tags for both tabs
+      // Clear search tags for all tabs
       _safeBooruSearchTag = '';
       _rule34SearchTag = '';
+      _yandeSearchTag = '';
       _searchController.clear();
       _images.clear();
       _page = 1;
@@ -703,7 +739,7 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
   // Generate dynamic title based on current search tag and tab
   String _getAppTitle() {
     final String currentTag = _currentSearchTag;
-    final String platform = _isRule34Mode ? 'Rule34' : 'SafeBooru';
+    final String platform = _isRule34Mode ? 'Rule34' : (_isYandeMode ? 'Yande.re' : 'SafeBooru');
 
     // Handle empty or whitespace-only tags
     if (currentTag.trim().isEmpty) {
@@ -753,7 +789,7 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
 
   // Toggle star status of an image with haptic feedback
   Future<void> _toggleStarImage(ImagePost imagePost) async {
-    final platform = _isRule34Mode ? 'Rule34' : 'SafeBooru';
+    final platform = _isRule34Mode ? 'Rule34' : (_isYandeMode ? 'Yande.re' : 'SafeBooru');
 
     // Add haptic feedback for better user experience (if enabled in settings)
     if (_settings.hapticFeedback) {
@@ -902,10 +938,15 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
             // Switch to the appropriate tab
             setState(() {
               _isRule34Mode = platform == 'Rule34';
-              _tabController.index = _isRule34Mode ? 1 : 0;
+              _isYandeMode = platform == 'Yande.re';
               if (_isRule34Mode) {
+                _tabController.index = 1;
                 _rule34SearchTag = searchTag;
+              } else if (_isYandeMode) {
+                _tabController.index = 2;
+                _yandeSearchTag = searchTag;
               } else {
+                _tabController.index = 0;
                 _safeBooruSearchTag = searchTag;
               }
               _searchController.text = searchTag;
@@ -973,7 +1014,7 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
   // Show media modal with fade and scale animation (video or image)
   void _showImageModal(ImagePost imagePost) {
     // Add to clicked images history
-    final platform = _isRule34Mode ? 'Rule34' : 'SafeBooru';
+    final platform = _isRule34Mode ? 'Rule34' : (_isYandeMode ? 'Yande.re' : 'SafeBooru');
     _addToClickedImages(imagePost, platform);
 
     // Automatically save media to custom directory
@@ -1040,6 +1081,7 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
           tabs: const [
             Tab(text: 'SafeBooru'),
             Tab(text: 'rule34'),
+            Tab(text: 'yande.re'),
             Tab(text: 'Settings'),
           ],
         ),
@@ -1352,7 +1394,7 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
                       size: 24,
                     ),
                     const SizedBox(width: 8),
-                    Text('Page: $_page (${_isRule34Mode ? 'Rule34' : 'SafeBooru'})'),
+                    Text('Page: $_page (${_isRule34Mode ? 'Rule34' : (_isYandeMode ? 'Yande.re' : 'SafeBooru')})'),
                   ],
                 ),
                 ElevatedButton(
@@ -1452,6 +1494,12 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
                 'Default search tags for Rule34',
                 _settings.defaultRule34Tags,
                 (value) => _updateSettings(_settings.copyWith(defaultRule34Tags: value)),
+              ),
+              _buildTextFieldSetting(
+                'Default Yande.re Tags',
+                'Default search tags for Yande.re',
+                _settings.defaultYandeTags,
+                (value) => _updateSettings(_settings.copyWith(defaultYandeTags: value)),
               ),
             ],
           ),
@@ -1561,7 +1609,7 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
                 ),
                 SizedBox(height: 8),
                 Text(
-                  'A Flutter app for browsing images from SafeBooru and Rule34',
+                  'A Flutter app for browsing images from SafeBooru, Rule34, and Yande.re',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 12,
@@ -2779,7 +2827,9 @@ class _HistoryPageState extends State<HistoryPage> with SingleTickerProviderStat
                             decoration: BoxDecoration(
                               color: historyItem.platform == 'Rule34'
                                   ? Colors.orange.withValues(alpha: 0.8)
-                                  : Colors.blue.withValues(alpha: 0.8),
+                                  : historyItem.platform == 'Yande.re'
+                                      ? Colors.pink.withValues(alpha: 0.8)
+                                      : Colors.blue.withValues(alpha: 0.8),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
@@ -2930,7 +2980,9 @@ class _HistoryPageState extends State<HistoryPage> with SingleTickerProviderStat
                                         decoration: BoxDecoration(
                                           color: clickedImage.platform == 'Rule34'
                                               ? Colors.orange.withValues(alpha: 0.8)
-                                              : Colors.blue.withValues(alpha: 0.8),
+                                              : clickedImage.platform == 'Yande.re'
+                                                  ? Colors.pink.withValues(alpha: 0.8)
+                                                  : Colors.blue.withValues(alpha: 0.8),
                                           borderRadius: BorderRadius.circular(8),
                                         ),
                                         child: Text(
