@@ -1,6 +1,6 @@
 # Maintainer: Your Name <your.email@example.com>
 pkgname=tetoimagebrowser
-pkgver=3.0.1
+pkgver=4.1.0
 pkgrel=1
 pkgdesc="tuff Image Browser - A Flutter-based image browser application"
 arch=('x86_64')
@@ -46,13 +46,13 @@ package() {
     cat > "$pkgdir/usr/bin/$pkgname" << 'EOF'
 #!/bin/bash
 cd /usr/share/tetoimagebrowser
-exec ./tetoimagebrowser "$@"
+exec ./tuffimagebrowser "$@"
 EOF
     chmod +x "$pkgdir/usr/bin/$pkgname"
     
     # Install desktop file (use the one from the build bundle)
-    if [ -f "build/linux/x64/release/bundle/share/applications/tetoimagebrowser.desktop" ]; then
-        install -Dm644 "build/linux/x64/release/bundle/share/applications/tetoimagebrowser.desktop" "$pkgdir/usr/share/applications/$pkgname.desktop"
+    if [ -f "build/linux/x64/release/bundle/share/applications/tuffimagebrowser.desktop" ]; then
+        install -Dm644 "build/linux/x64/release/bundle/share/applications/tuffimagebrowser.desktop" "$pkgdir/usr/share/applications/$pkgname.desktop"
     fi
 
     # Install icon from Windows resources (now available in Linux build)
