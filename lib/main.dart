@@ -1601,7 +1601,7 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
                 ),
                 SizedBox(height: 8),
                 Text(
-                  'Version 3.0.1',
+                  'Version 4.1.0',
                   style: TextStyle(
                     fontSize: 14,
                     color: Colors.grey,
