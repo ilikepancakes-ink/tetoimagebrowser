@@ -1,6 +1,7 @@
 #include "my_application.h"
 
 #include <flutter_linux/flutter_linux.h>
+#include <gdk-pixbuf/gdk-pixbuf.h>
 #ifdef GDK_WINDOWING_X11
 #include <gdk/gdkx.h>
 #endif
@@ -48,6 +49,34 @@ static void my_application_activate(GApplication* application) {
   }
 
   gtk_window_set_default_size(window, 1280, 720);
+
+  // Set the window icon
+  GError* error = nullptr;
+  GdkPixbuf* icon = nullptr;
+
+  // Try to load icon from different possible locations
+  const char* icon_paths[] = {
+    "data/app_icon.ico",  // From bundle data directory
+    "../web/icons/Icon-192.png",  // From web icons (development)
+    "/usr/share/icons/hicolor/192x192/apps/tuffimagebrowser.png",  // System installed
+    nullptr
+  };
+
+  for (int i = 0; icon_paths[i] != nullptr && icon == nullptr; i++) {
+    icon = gdk_pixbuf_new_from_file(icon_paths[i], &error);
+    if (error != nullptr) {
+      g_clear_error(&error);
+    }
+  }
+
+  if (icon != nullptr) {
+    gtk_window_set_icon(window, icon);
+    g_object_unref(icon);
+  } else {
+    // Fallback: try to set icon by name (for system-installed icons)
+    gtk_window_set_icon_name(window, "tuffimagebrowser");
+  }
+
   gtk_widget_show(GTK_WIDGET(window));
 
   g_autoptr(FlDartProject) project = fl_dart_project_new();

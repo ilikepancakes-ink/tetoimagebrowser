@@ -4,10 +4,10 @@ project(runner LANGUAGES CXX)
 
 # The name of the executable created for the application. Change this to change
 # the on-disk name of your application.
-set(BINARY_NAME "tetoimagebrowser")
+set(BINARY_NAME "tuffimagebrowser")
 # The unique GTK application identifier for this application. See:
 # https://wiki.gnome.org/HowDoI/ChooseApplicationID
-set(APPLICATION_ID "com.example.tetoimagebrowser")
+set(APPLICATION_ID "com.internettools.tuffimagebrowser")
 
 # Explicitly opt in to modern CMake behaviors to avoid warnings with recent
 # versions of CMake.
@@ -53,6 +53,7 @@ add_subdirectory(${FLUTTER_MANAGED_DIR})
 # System-level dependencies.
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(GTK REQUIRED IMPORTED_TARGET gtk+-3.0)
+pkg_check_modules(GDK_PIXBUF REQUIRED IMPORTED_TARGET gdk-pixbuf-2.0)
 
 # Application build; see runner/CMakeLists.txt.
 add_subdirectory("runner")
@@ -127,18 +128,29 @@ if(NOT CMAKE_BUILD_TYPE MATCHES "Debug")
     COMPONENT Runtime)
 endif()
 
-# Install the application icon to bundle data directory
+# Install the application icon to bundle data directory (ICO for Windows compatibility)
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/runner/resources/app_icon.ico"
   DESTINATION "${INSTALL_BUNDLE_DATA_DIR}"
   COMPONENT Runtime)
 
-# Install the application icon to system icon directory (for desktop integration)
-install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/runner/resources/app_icon.ico"
+# Install PNG icons for Linux desktop integration
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/../web/icons/Icon-192.png"
+  DESTINATION "${CMAKE_INSTALL_PREFIX}/share/icons/hicolor/192x192/apps"
+  RENAME "tuffimagebrowser.png"
+  COMPONENT Runtime)
+
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/../web/icons/Icon-512.png"
+  DESTINATION "${CMAKE_INSTALL_PREFIX}/share/icons/hicolor/512x512/apps"
+  RENAME "tuffimagebrowser.png"
+  COMPONENT Runtime)
+
+# Install a 48x48 icon (scaled from 192x192) for older systems
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/../web/icons/Icon-192.png"
   DESTINATION "${CMAKE_INSTALL_PREFIX}/share/icons/hicolor/48x48/apps"
-  RENAME "app_icon.ico"
+  RENAME "tuffimagebrowser.png"
   COMPONENT Runtime)
 
 # Install the desktop entry file
-install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/tetoimagebrowser.desktop"
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/tuffimagebrowser.desktop"
   DESTINATION "${CMAKE_INSTALL_PREFIX}/share/applications"
   COMPONENT Runtime)
