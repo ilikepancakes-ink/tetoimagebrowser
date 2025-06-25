@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+// import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:http/http.dart' as http;
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -9,6 +11,207 @@ import 'package:video_player/video_player.dart';
 import 'package:chewie/chewie.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:gal/gal.dart';
+
+// Simple localization helper class
+class CustomLocalizations {
+  final String languageCode;
+
+  CustomLocalizations(this.languageCode);
+
+  static CustomLocalizations of(BuildContext context) {
+    return Localizations.of(context, CustomLocalizations) ?? CustomLocalizations('en');
+  }
+
+  static const LocalizationsDelegate<CustomLocalizations> delegate = _CustomLocalizationsDelegate();
+
+  Map<String, String> get _localizedStrings {
+    switch (languageCode) {
+      case 'ja':
+        return _japaneseStrings;
+      case 'ko':
+        return _koreanStrings;
+      default:
+        return _englishStrings;
+    }
+  }
+
+  String translate(String key) {
+    return _localizedStrings[key] ?? key;
+  }
+
+  // English strings
+  static const Map<String, String> _englishStrings = {
+    'appTitle': 'Tuff Image Browser',
+    'searchForImage': 'Search for a image',
+    'searchHint': 'Enter tags like "kasane_teto", "vocaloid", or "anime" to find images',
+    'search': 'Search',
+    'home': 'Home',
+    'settings': 'Settings',
+    'history': 'History',
+    'starredImages': 'Starred Images',
+    'switchToLightMode': 'Switch to Light Mode',
+    'switchToDarkMode': 'Switch to Dark Mode',
+    'displaySettings': 'Display Settings',
+    'gridColumns': 'Grid Columns',
+    'gridColumnsDescription': 'Number of columns in the image grid',
+    'showFileTypeBadges': 'Show File Type Badges',
+    'showFileTypeBadgesDescription': 'Display video/image badges on thumbnails',
+    'autoPlayVideos': 'Auto-play Videos',
+    'autoPlayVideosDescription': 'Automatically start video playback when opened',
+    'searchSettings': 'Search Settings',
+    'resultsPerPage': 'Results Per Page',
+    'resultsPerPageDescription': 'Number of images to load per page',
+    'safeSearchMode': 'Safe Search Mode',
+    'safeSearchModeDescription': 'Filter explicit content (recommended)',
+    'defaultSafeBooruTags': 'Default SafeBooru Tags',
+    'defaultSafeBooruTagsDescription': 'Default search tags for SafeBooru',
+    'defaultRule34Tags': 'Default Rule34 Tags',
+    'defaultRule34TagsDescription': 'Default search tags for Rule34',
+    'defaultYandeTags': 'Default Yande.re Tags',
+    'defaultYandeTagsDescription': 'Default search tags for Yande.re',
+    'downloadSettings': 'Download Settings',
+    'autoSaveToGallery': 'Auto-save to Gallery',
+    'autoSaveToGalleryDescriptionMobile': 'Automatically save images/videos to app directory and photo gallery when viewed',
+    'autoSaveToGalleryDescriptionDesktop': 'Automatically save images/videos to Pictures folder when viewed',
+    'appSettings': 'App Settings',
+    'language': 'Language',
+    'languageDescription': 'Select your preferred language',
+    'hapticFeedback': 'Haptic Feedback',
+    'hapticFeedbackDescription': 'Vibrate when interacting with elements',
+    'incognitoMode': 'Incognito Mode',
+    'incognitoModeDescription': 'Don\'t save search history or starred images',
+    'english': 'English',
+    'japanese': 'Japanese',
+    'korean': 'Korean',
+    'back': 'Back',
+    'forward': 'Forward',
+    'pullNewImages': 'Pull New Images',
+    'video': 'Video',
+    'image': 'Image',
+    'enterTags': 'Enter tags...',
+  };
+
+  // Japanese strings
+  static const Map<String, String> _japaneseStrings = {
+    'appTitle': 'タフ画像ブラウザ',
+    'searchForImage': '画像を検索',
+    'searchHint': '「kasane_teto」、「vocaloid」、「anime」などのタグを入力して画像を検索',
+    'search': '検索',
+    'home': 'ホーム',
+    'settings': '設定',
+    'history': '履歴',
+    'starredImages': 'お気に入り画像',
+    'switchToLightMode': 'ライトモードに切り替え',
+    'switchToDarkMode': 'ダークモードに切り替え',
+    'displaySettings': '表示設定',
+    'gridColumns': 'グリッド列数',
+    'gridColumnsDescription': '画像グリッドの列数',
+    'showFileTypeBadges': 'ファイルタイプバッジを表示',
+    'showFileTypeBadgesDescription': 'サムネイルに動画/画像バッジを表示',
+    'autoPlayVideos': '動画自動再生',
+    'autoPlayVideosDescription': '開いたときに動画を自動的に再生開始',
+    'searchSettings': '検索設定',
+    'resultsPerPage': 'ページあたりの結果数',
+    'resultsPerPageDescription': 'ページごとに読み込む画像数',
+    'safeSearchMode': 'セーフサーチモード',
+    'safeSearchModeDescription': '露骨なコンテンツをフィルタリング（推奨）',
+    'defaultSafeBooruTags': 'デフォルトSafeBooruタグ',
+    'defaultSafeBooruTagsDescription': 'SafeBooruのデフォルト検索タグ',
+    'defaultRule34Tags': 'デフォルトRule34タグ',
+    'defaultRule34TagsDescription': 'Rule34のデフォルト検索タグ',
+    'defaultYandeTags': 'デフォルトYande.reタグ',
+    'defaultYandeTagsDescription': 'Yande.reのデフォルト検索タグ',
+    'downloadSettings': 'ダウンロード設定',
+    'autoSaveToGallery': 'ギャラリーに自動保存',
+    'autoSaveToGalleryDescriptionMobile': '表示時に画像/動画をアプリディレクトリとフォトギャラリーに自動保存',
+    'autoSaveToGalleryDescriptionDesktop': '表示時に画像/動画をピクチャフォルダに自動保存',
+    'appSettings': 'アプリ設定',
+    'language': '言語',
+    'languageDescription': 'お好みの言語を選択',
+    'hapticFeedback': '触覚フィードバック',
+    'hapticFeedbackDescription': '要素との相互作用時に振動',
+    'incognitoMode': 'シークレットモード',
+    'incognitoModeDescription': '検索履歴やお気に入り画像を保存しない',
+    'english': 'English',
+    'japanese': '日本語',
+    'korean': '한국어',
+    'back': '戻る',
+    'forward': '進む',
+    'pullNewImages': '新しい画像を取得',
+    'video': '動画',
+    'image': '画像',
+    'enterTags': 'タグを入力...',
+  };
+
+  // Korean strings
+  static const Map<String, String> _koreanStrings = {
+    'appTitle': '터프 이미지 브라우저',
+    'searchForImage': '이미지 검색',
+    'searchHint': '"kasane_teto", "vocaloid", "anime" 등의 태그를 입력하여 이미지 찾기',
+    'search': '검색',
+    'home': '홈',
+    'settings': '설정',
+    'history': '기록',
+    'starredImages': '즐겨찾기 이미지',
+    'switchToLightMode': '라이트 모드로 전환',
+    'switchToDarkMode': '다크 모드로 전환',
+    'displaySettings': '표시 설정',
+    'gridColumns': '그리드 열 수',
+    'gridColumnsDescription': '이미지 그리드의 열 수',
+    'showFileTypeBadges': '파일 타입 배지 표시',
+    'showFileTypeBadgesDescription': '썸네일에 비디오/이미지 배지 표시',
+    'autoPlayVideos': '비디오 자동 재생',
+    'autoPlayVideosDescription': '열었을 때 비디오 재생 자동 시작',
+    'searchSettings': '검색 설정',
+    'resultsPerPage': '페이지당 결과 수',
+    'resultsPerPageDescription': '페이지당 로드할 이미지 수',
+    'safeSearchMode': '안전 검색 모드',
+    'safeSearchModeDescription': '노골적인 콘텐츠 필터링 (권장)',
+    'defaultSafeBooruTags': '기본 SafeBooru 태그',
+    'defaultSafeBooruTagsDescription': 'SafeBooru의 기본 검색 태그',
+    'defaultRule34Tags': '기본 Rule34 태그',
+    'defaultRule34TagsDescription': 'Rule34의 기본 검색 태그',
+    'defaultYandeTags': '기본 Yande.re 태그',
+    'defaultYandeTagsDescription': 'Yande.re의 기본 검색 태그',
+    'downloadSettings': '다운로드 설정',
+    'autoSaveToGallery': '갤러리에 자동 저장',
+    'autoSaveToGalleryDescriptionMobile': '보기 시 이미지/비디오를 앱 디렉토리와 사진 갤러리에 자동 저장',
+    'autoSaveToGalleryDescriptionDesktop': '보기 시 이미지/비디오를 사진 폴더에 자동 저장',
+    'appSettings': '앱 설정',
+    'language': '언어',
+    'languageDescription': '선호하는 언어 선택',
+    'hapticFeedback': '햅틱 피드백',
+    'hapticFeedbackDescription': '요소와 상호작용할 때 진동',
+    'incognitoMode': '시크릿 모드',
+    'incognitoModeDescription': '검색 기록이나 즐겨찾기 이미지를 저장하지 않음',
+    'english': 'English',
+    'japanese': '日本語',
+    'korean': '한국어',
+    'back': '뒤로',
+    'forward': '앞으로',
+    'pullNewImages': '새 이미지 가져오기',
+    'video': '비디오',
+    'image': '이미지',
+    'enterTags': '태그 입력...',
+  };
+}
+
+class _CustomLocalizationsDelegate extends LocalizationsDelegate<CustomLocalizations> {
+  const _CustomLocalizationsDelegate();
+
+  @override
+  bool isSupported(Locale locale) {
+    return ['en', 'ja', 'ko'].contains(locale.languageCode);
+  }
+
+  @override
+  Future<CustomLocalizations> load(Locale locale) async {
+    return CustomLocalizations(locale.languageCode);
+  }
+
+  @override
+  bool shouldReload(_CustomLocalizationsDelegate old) => false;
+}
 
 // Helper function to get or create the custom images directory in user's Pictures folder
 Future<Directory> getCustomImagesDirectory() async {
@@ -158,6 +361,7 @@ class AppSettings {
   final String defaultYandeTags;
   final bool showSearchHistory;
   final bool incognitoMode;
+  final String language;
 
   const AppSettings({
     this.gridColumns = 2,
@@ -172,6 +376,7 @@ class AppSettings {
     this.defaultYandeTags = '',
     this.showSearchHistory = true,
     this.incognitoMode = false,
+    this.language = 'en',
   });
 
   factory AppSettings.fromJson(Map<String, dynamic> json) {
@@ -188,6 +393,7 @@ class AppSettings {
       defaultYandeTags: json['defaultYandeTags'] ?? '',
       showSearchHistory: json['showSearchHistory'] ?? true,
       incognitoMode: json['incognitoMode'] ?? false,
+      language: json['language'] ?? 'en',
     );
   }
 
@@ -205,6 +411,7 @@ class AppSettings {
       'defaultYandeTags': defaultYandeTags,
       'showSearchHistory': showSearchHistory,
       'incognitoMode': incognitoMode,
+      'language': language,
     };
   }
 
@@ -221,6 +428,7 @@ class AppSettings {
     String? defaultYandeTags,
     bool? showSearchHistory,
     bool? incognitoMode,
+    String? language,
   }) {
     return AppSettings(
       gridColumns: gridColumns ?? this.gridColumns,
@@ -235,6 +443,7 @@ class AppSettings {
       defaultYandeTags: defaultYandeTags ?? this.defaultYandeTags,
       showSearchHistory: showSearchHistory ?? this.showSearchHistory,
       incognitoMode: incognitoMode ?? this.incognitoMode,
+      language: language ?? this.language,
     );
   }
 }
@@ -437,17 +646,19 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   bool _isDarkMode = false;
+  String _currentLanguage = 'en';
 
   @override
   void initState() {
     super.initState();
-    _loadThemePreference();
+    _loadPreferences();
   }
 
-  Future<void> _loadThemePreference() async {
+  Future<void> _loadPreferences() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
       _isDarkMode = prefs.getBool('isDarkMode') ?? false;
+      _currentLanguage = prefs.getString('language') ?? 'en';
     });
   }
 
@@ -459,11 +670,31 @@ class _MyAppState extends State<MyApp> {
     await prefs.setBool('isDarkMode', _isDarkMode);
   }
 
+  Future<void> _updateLanguage(String languageCode) async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _currentLanguage = languageCode;
+    });
+    await prefs.setString('language', languageCode);
+  }
+
   // Root widget for the application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Tuff Image Browser',
+      localizationsDelegates: const [
+        CustomLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('en', ''), // English
+        Locale('ja', ''), // Japanese
+        Locale('ko', ''), // Korean
+      ],
+      locale: Locale(_currentLanguage, ''),
       theme: ThemeData(
         primarySwatch: Colors.red, // Changed to red to match Teto's color scheme
         colorScheme: ColorScheme.fromSeed(
@@ -479,7 +710,12 @@ class _MyAppState extends State<MyApp> {
         ),
       ),
       themeMode: _isDarkMode ? ThemeMode.dark : ThemeMode.light,
-      home: ImageBrowserPage(onThemeToggle: _toggleTheme, isDarkMode: _isDarkMode),
+      home: ImageBrowserPage(
+        onThemeToggle: _toggleTheme,
+        isDarkMode: _isDarkMode,
+        onLanguageChange: _updateLanguage,
+        currentLanguage: _currentLanguage,
+      ),
     );
   }
 }
@@ -487,11 +723,15 @@ class _MyAppState extends State<MyApp> {
 class ImageBrowserPage extends StatefulWidget {
   final VoidCallback onThemeToggle;
   final bool isDarkMode;
+  final Function(String) onLanguageChange;
+  final String currentLanguage;
 
   const ImageBrowserPage({
     super.key,
     required this.onThemeToggle,
     required this.isDarkMode,
+    required this.onLanguageChange,
+    required this.currentLanguage,
   });
 
   @override
@@ -738,12 +978,13 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
 
   // Generate dynamic title based on current search tag and tab
   String _getAppTitle() {
+    final localizations = CustomLocalizations.of(context);
     final String currentTag = _currentSearchTag;
     final String platform = _isRule34Mode ? 'Rule34' : (_isYandeMode ? 'Yande.re' : 'SafeBooru');
 
     // Handle empty or whitespace-only tags
     if (currentTag.trim().isEmpty) {
-      return 'Search for a image';
+      return localizations.translate('searchForImage');
     }
 
     // Capitalize first letter of each word in the tag for better display
@@ -1114,6 +1355,8 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
 
   // Build the centered search interface when no search has been performed
   Widget _buildEmptySearchState() {
+    final localizations = CustomLocalizations.of(context);
+
     return Center(
       key: const ValueKey('empty_search'),
       child: Padding(
@@ -1127,16 +1370,16 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
               color: Color(0xFFE91E63),
             ),
             const SizedBox(height: 24),
-            const Text(
-              'Search for a image',
-              style: TextStyle(
+            Text(
+              localizations.translate('searchForImage'),
+              style: const TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
               ),
             ),
             const SizedBox(height: 16),
             Text(
-              'Enter tags like "kasane_teto", "vocaloid", or "anime" to find images',
+              localizations.translate('searchHint'),
               style: TextStyle(
                 fontSize: 16,
                 color: Colors.grey[600],
@@ -1152,7 +1395,7 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
                     child: TextField(
                       controller: _searchController,
                       decoration: InputDecoration(
-                        hintText: 'Search for a image',
+                        hintText: localizations.translate('searchForImage'),
                         prefixIcon: const Icon(Icons.search),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8.0),
@@ -1170,7 +1413,7 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
                     ),
-                    child: const Text('Search'),
+                    child: Text(localizations.translate('search')),
                   ),
                 ],
               ),
@@ -1183,6 +1426,8 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
 
   // Build the search results interface when a search has been performed
   Widget _buildSearchResultsState() {
+    final localizations = CustomLocalizations.of(context);
+
     return Column(
       key: ValueKey('search_results_${_currentSearchTag}_$_isRule34Mode'),
       children: [
@@ -1195,7 +1440,7 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
               IconButton(
                 onPressed: _goToHome,
                 icon: const Icon(Icons.home),
-                tooltip: 'Go to Home',
+                tooltip: localizations.translate('home'),
                 style: IconButton.styleFrom(
                   backgroundColor: const Color(0xFFE91E63),
                   foregroundColor: Colors.white,
@@ -1207,7 +1452,7 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
                 child: TextField(
                   controller: _searchController,
                   decoration: InputDecoration(
-                    hintText: 'Search for a image',
+                    hintText: localizations.translate('searchForImage'),
                     prefixIcon: const Icon(Icons.search),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8.0),
@@ -1225,7 +1470,7 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
                 ),
-                child: const Text('Search'),
+                child: Text(localizations.translate('search')),
               ),
             ],
           ),
@@ -1525,6 +1770,7 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
             'App Settings',
             Icons.app_settings_alt,
             [
+              _buildLanguageDropdownSetting(),
               _buildSwitchSetting(
                 'Haptic Feedback',
                 'Vibrate when interacting with elements',
@@ -1746,6 +1992,39 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
       subtitle: Text(subtitle, style: const TextStyle(fontSize: 12)),
       trailing: const Icon(Icons.arrow_forward_ios, size: 16),
       onTap: onTap,
+    );
+  }
+
+  // Helper method to build language dropdown setting
+  Widget _buildLanguageDropdownSetting() {
+    final localizations = CustomLocalizations.of(context);
+
+    return ListTile(
+      title: Text(localizations.translate('language')),
+      subtitle: Text(localizations.translate('languageDescription'), style: const TextStyle(fontSize: 12)),
+      trailing: DropdownButton<String>(
+        value: widget.currentLanguage,
+        items: [
+          DropdownMenuItem<String>(
+            value: 'en',
+            child: Text(localizations.translate('english')),
+          ),
+          DropdownMenuItem<String>(
+            value: 'ja',
+            child: Text(localizations.translate('japanese')),
+          ),
+          DropdownMenuItem<String>(
+            value: 'ko',
+            child: Text(localizations.translate('korean')),
+          ),
+        ],
+        onChanged: (String? newValue) {
+          if (newValue != null) {
+            widget.onLanguageChange(newValue);
+            _updateSettings(_settings.copyWith(language: newValue));
+          }
+        },
+      ),
     );
   }
 

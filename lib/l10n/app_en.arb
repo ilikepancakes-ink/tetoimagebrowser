@@ -1,0 +1,229 @@
+{
+  "@@locale": "en",
+  "appTitle": "Tuff Image Browser",
+  "@appTitle": {
+    "description": "The title of the application"
+  },
+  "searchForImage": "Search for a image",
+  "@searchForImage": {
+    "description": "Placeholder text for search input"
+  },
+  "searchHint": "Enter tags like \"kasane_teto\", \"vocaloid\", or \"anime\" to find images",
+  "@searchHint": {
+    "description": "Hint text for search functionality"
+  },
+  "search": "Search",
+  "@search": {
+    "description": "Search button text"
+  },
+  "home": "Home",
+  "@home": {
+    "description": "Home button text"
+  },
+  "settings": "Settings",
+  "@settings": {
+    "description": "Settings tab and page title"
+  },
+  "history": "History",
+  "@history": {
+    "description": "History button text"
+  },
+  "starredImages": "Starred Images",
+  "@starredImages": {
+    "description": "Starred images button text"
+  },
+  "switchToLightMode": "Switch to Light Mode",
+  "@switchToLightMode": {
+    "description": "Tooltip for light mode button"
+  },
+  "switchToDarkMode": "Switch to Dark Mode",
+  "@switchToDarkMode": {
+    "description": "Tooltip for dark mode button"
+  },
+  "displaySettings": "Display Settings",
+  "@displaySettings": {
+    "description": "Display settings section title"
+  },
+  "gridColumns": "Grid Columns",
+  "@gridColumns": {
+    "description": "Grid columns setting title"
+  },
+  "gridColumnsDescription": "Number of columns in the image grid",
+  "@gridColumnsDescription": {
+    "description": "Grid columns setting description"
+  },
+  "showFileTypeBadges": "Show File Type Badges",
+  "@showFileTypeBadges": {
+    "description": "File type badges setting title"
+  },
+  "showFileTypeBadgesDescription": "Display video/image badges on thumbnails",
+  "@showFileTypeBadgesDescription": {
+    "description": "File type badges setting description"
+  },
+  "autoPlayVideos": "Auto-play Videos",
+  "@autoPlayVideos": {
+    "description": "Auto-play videos setting title"
+  },
+  "autoPlayVideosDescription": "Automatically start video playback when opened",
+  "@autoPlayVideosDescription": {
+    "description": "Auto-play videos setting description"
+  },
+  "searchSettings": "Search Settings",
+  "@searchSettings": {
+    "description": "Search settings section title"
+  },
+  "resultsPerPage": "Results Per Page",
+  "@resultsPerPage": {
+    "description": "Results per page setting title"
+  },
+  "resultsPerPageDescription": "Number of images to load per page",
+  "@resultsPerPageDescription": {
+    "description": "Results per page setting description"
+  },
+  "safeSearchMode": "Safe Search Mode",
+  "@safeSearchMode": {
+    "description": "Safe search mode setting title"
+  },
+  "safeSearchModeDescription": "Filter explicit content (recommended)",
+  "@safeSearchModeDescription": {
+    "description": "Safe search mode setting description"
+  },
+  "defaultSafeBooruTags": "Default SafeBooru Tags",
+  "@defaultSafeBooruTags": {
+    "description": "Default SafeBooru tags setting title"
+  },
+  "defaultSafeBooruTagsDescription": "Default search tags for SafeBooru",
+  "@defaultSafeBooruTagsDescription": {
+    "description": "Default SafeBooru tags setting description"
+  },
+  "defaultRule34Tags": "Default Rule34 Tags",
+  "@defaultRule34Tags": {
+    "description": "Default Rule34 tags setting title"
+  },
+  "defaultRule34TagsDescription": "Default search tags for Rule34",
+  "@defaultRule34TagsDescription": {
+    "description": "Default Rule34 tags setting description"
+  },
+  "defaultYandeTags": "Default Yande.re Tags",
+  "@defaultYandeTags": {
+    "description": "Default Yande.re tags setting title"
+  },
+  "defaultYandeTagsDescription": "Default search tags for Yande.re",
+  "@defaultYandeTagsDescription": {
+    "description": "Default Yande.re tags setting description"
+  },
+  "downloadSettings": "Download Settings",
+  "@downloadSettings": {
+    "description": "Download settings section title"
+  },
+  "autoSaveToGallery": "Auto-save to Gallery",
+  "@autoSaveToGallery": {
+    "description": "Auto-save to gallery setting title"
+  },
+  "autoSaveToGalleryDescriptionMobile": "Automatically save images/videos to app directory and photo gallery when viewed",
+  "@autoSaveToGalleryDescriptionMobile": {
+    "description": "Auto-save to gallery setting description for mobile"
+  },
+  "autoSaveToGalleryDescriptionDesktop": "Automatically save images/videos to Pictures folder when viewed",
+  "@autoSaveToGalleryDescriptionDesktop": {
+    "description": "Auto-save to gallery setting description for desktop"
+  },
+  "appSettings": "App Settings",
+  "@appSettings": {
+    "description": "App settings section title"
+  },
+  "language": "Language",
+  "@language": {
+    "description": "Language setting title"
+  },
+  "languageDescription": "Select your preferred language",
+  "@languageDescription": {
+    "description": "Language setting description"
+  },
+  "hapticFeedback": "Haptic Feedback",
+  "@hapticFeedback": {
+    "description": "Haptic feedback setting title"
+  },
+  "hapticFeedbackDescription": "Vibrate when interacting with elements",
+  "@hapticFeedbackDescription": {
+    "description": "Haptic feedback setting description"
+  },
+  "incognitoMode": "Incognito Mode",
+  "@incognitoMode": {
+    "description": "Incognito mode setting title"
+  },
+  "incognitoModeDescription": "Don't save search history or starred images",
+  "@incognitoModeDescription": {
+    "description": "Incognito mode setting description"
+  },
+  "english": "English",
+  "@english": {
+    "description": "English language option"
+  },
+  "japanese": "Japanese",
+  "@japanese": {
+    "description": "Japanese language option"
+  },
+  "korean": "Korean",
+  "@korean": {
+    "description": "Korean language option"
+  },
+  "noImagesFound": "No images found for tag: {tag}",
+  "@noImagesFound": {
+    "description": "Message when no images are found",
+    "placeholders": {
+      "tag": {
+        "type": "String",
+        "description": "The search tag that returned no results"
+      }
+    }
+  },
+  "serverError": "Server error: {code}",
+  "@serverError": {
+    "description": "Server error message",
+    "placeholders": {
+      "code": {
+        "type": "String",
+        "description": "The HTTP error code"
+      }
+    }
+  },
+  "page": "Page: {pageNumber} ({platform})",
+  "@page": {
+    "description": "Page indicator text",
+    "placeholders": {
+      "pageNumber": {
+        "type": "int",
+        "description": "Current page number"
+      },
+      "platform": {
+        "type": "String",
+        "description": "Current platform name"
+      }
+    }
+  },
+  "back": "Back",
+  "@back": {
+    "description": "Back button text"
+  },
+  "forward": "Forward",
+  "@forward": {
+    "description": "Forward button text"
+  },
+  "pullNewImages": "Pull New Images",
+  "@pullNewImages": {
+    "description": "Pull new images button text"
+  },
+  "video": "Video",
+  "@video": {
+    "description": "Video file type label"
+  },
+  "image": "Image",
+  "@image": {
+    "description": "Image file type label"
+  },
+  "enterTags": "Enter tags...",
+  "@enterTags": {
+    "description": "Placeholder text for tag input fields"
+  }
+}
