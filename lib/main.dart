@@ -11,6 +11,9 @@ import 'package:video_player/video_player.dart';
 import 'package:chewie/chewie.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:gal/gal.dart';
+import 'package:media_kit/media_kit.dart';
+import 'package:media_kit_video/media_kit_video.dart';
+import 'package:video_player_media_kit/video_player_media_kit.dart';
 
 // Simple localization helper class
 class CustomLocalizations {
@@ -633,6 +636,14 @@ class ClickedImageItem {
 void main() {
   // Set app title and icon for desktop platforms
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize MediaKit for video playback support on all platforms
+  MediaKit.ensureInitialized();
+
+  // Register video_player_media_kit for Linux desktop support
+  if (Platform.isLinux || Platform.isWindows || Platform.isMacOS) {
+    VideoPlayerMediaKit.ensureInitialized();
+  }
 
   runApp(MyApp());
 }
@@ -1847,7 +1858,7 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
                 ),
                 SizedBox(height: 8),
                 Text(
-                  'Version 4.1.0',
+                  'Version 4.1.5',
                   style: TextStyle(
                     fontSize: 14,
                     color: Colors.grey,
