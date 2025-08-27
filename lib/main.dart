@@ -1920,7 +1920,7 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
       trailing: Switch(
         value: value,
         onChanged: onChanged,
-        activeColor: const Color(0xFFE91E63),
+        activeThumbColor: const Color(0xFFE91E63),
       ),
     );
   }
