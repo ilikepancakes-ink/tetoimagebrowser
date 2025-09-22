@@ -1,0 +1,233 @@
+{
+  "@@locale": "nl",
+  "appTitle": "Tuff Image Browser",
+  "@appTitle": {
+    "description": "The title of the application"
+  },
+  "searchForImage": "Zoek naar een afbeelding",
+  "@searchForImage": {
+    "description": "Placeholder text for search input"
+  },
+  "searchHint": "Voer tags in zoals \"kasane_teto\", \"vocaloid\", of \"anime\" om afbeeldingen te vinden",
+  "@searchHint": {
+    "description": "Hint text for search functionality"
+  },
+  "search": "Zoeken",
+  "@search": {
+    "description": "Search button text"
+  },
+  "home": "Home",
+  "@home": {
+    "description": "Home button text"
+  },
+  "settings": "Instellingen",
+  "@settings": {
+    "description": "Settings tab and page title"
+  },
+  "history": "Geschiedenis",
+  "@history": {
+    "description": "History button text"
+  },
+  "starredImages": "Favoriete Afbeeldingen",
+  "@starredImages": {
+    "description": "Starred images button text"
+  },
+  "switchToLightMode": "Omschakelen naar Licht Modus",
+  "@switchToLightMode": {
+    "description": "Tooltip for light mode button"
+  },
+  "switchToDarkMode": "Omschakelen naar Donker Modus",
+  "@switchToDarkMode": {
+    "description": "Tooltip for dark mode button"
+  },
+  "displaySettings": "Weergave Instellingen",
+  "@displaySettings": {
+    "description": "Display settings section title"
+  },
+  "gridColumns": "Raster Kolommen",
+  "@gridColumns": {
+    "description": "Grid columns setting title"
+  },
+  "gridColumnsDescription": "Aantal kolommen in het afbeeldingsraster",
+  "@gridColumnsDescription": {
+    "description": "Grid columns setting description"
+  },
+  "showFileTypeBadges": "Toon Bestandstype Badges",
+  "@showFileTypeBadges": {
+    "description": "File type badges setting title"
+  },
+  "showFileTypeBadgesDescription": "Toon video/afbeelding badges op miniaturen",
+  "@showFileTypeBadgesDescription": {
+    "description": "File type badges setting description"
+  },
+  "autoPlayVideos": "Automatisch Video's Afspelen",
+  "@autoPlayVideos": {
+    "description": "Auto-play videos setting title"
+  },
+  "autoPlayVideosDescription": "Automatisch video afspelen starten wanneer geopend",
+  "@autoPlayVideosDescription": {
+    "description": "Auto-play videos setting description"
+  },
+  "searchSettings": "Zoek Instellingen",
+  "@searchSettings": {
+    "description": "Search settings section title"
+  },
+  "resultsPerPage": "Resultaten Per Pagina",
+  "@resultsPerPage": {
+    "description": "Results per page setting title"
+  },
+  "resultsPerPageDescription": "Aantal afbeeldingen om per pagina te laden",
+  "@resultsPerPageDescription": {
+    "description": "Results per page setting description"
+  },
+  "safeSearchMode": "Veilig Zoeken Modus",
+  "@safeSearchMode": {
+    "description": "Safe search mode setting title"
+  },
+  "safeSearchModeDescription": "Expliciete inhoud filteren (aanbevolen)",
+  "@safeSearchModeDescription": {
+    "description": "Safe search mode setting description"
+  },
+  "defaultSafeBooruTags": "Standaard SafeBooru Tags",
+  "@defaultSafeBooruTags": {
+    "description": "Default SafeBooru tags setting title"
+  },
+  "defaultSafeBooruTagsDescription": "Standaard zoek tags voor SafeBooru",
+  "@defaultSafeBooruTagsDescription": {
+    "description": "Default SafeBooru tags setting description"
+  },
+  "defaultRule34Tags": "Standaard Rule34 Tags",
+  "@defaultRule34Tags": {
+    "description": "Default Rule34 tags setting title"
+  },
+  "defaultRule34TagsDescription": "Standaard zoek tags voor Rule34",
+  "@defaultRule34TagsDescription": {
+    "description": "Default Rule34 tags setting description"
+  },
+  "defaultYandeTags": "Standaard Yande.re Tags",
+  "@defaultYandeTags": {
+    "description": "Default Yande.re tags setting title"
+  },
+  "defaultYandeTagsDescription": "Standaard zoek tags voor Yande.re",
+  "@defaultYandeTagsDescription": {
+    "description": "Default Yande.re tags setting description"
+  },
+  "downloadSettings": "Download Instellingen",
+  "@downloadSettings": {
+    "description": "Download settings section title"
+  },
+  "autoSaveToGallery": "Automatisch Opslaan naar Galerij",
+  "@autoSaveToGallery": {
+    "description": "Auto-save to gallery setting title"
+  },
+  "autoSaveToGalleryDescriptionMobile": "Automatisch afbeeldingen/video's opslaan naar app directory en fotogalerij wanneer bekeken",
+  "@autoSaveToGalleryDescriptionMobile": {
+    "description": "Auto-save to gallery setting description for mobile"
+  },
+  "autoSaveToGalleryDescriptionDesktop": "Automatisch afbeeldingen/video's opslaan naar Afbeeldingen map wanneer bekeken",
+  "@autoSaveToGalleryDescriptionDesktop": {
+    "description": "Auto-save to gallery setting description for desktop"
+  },
+  "appSettings": "App Instellingen",
+  "@appSettings": {
+    "description": "App settings section title"
+  },
+  "language": "Taal",
+  "@language": {
+    "description": "Language setting title"
+  },
+  "languageDescription": "Selecteer uw voorkeurstaal",
+  "@languageDescription": {
+    "description": "Language setting description"
+  },
+  "hapticFeedback": "Haptische Feedback",
+  "@hapticFeedback": {
+    "description": "Haptic feedback setting title"
+  },
+  "hapticFeedbackDescription": "Trillen bij interactie met elementen",
+  "@hapticFeedbackDescription": {
+    "description": "Haptic feedback setting description"
+  },
+  "incognitoMode": "Incognito Modus",
+  "@incognitoMode": {
+    "description": "Incognito mode setting title"
+  },
+  "incognitoModeDescription": "Zoekgeschiedenis of favoriete afbeeldingen niet opslaan",
+  "@incognitoModeDescription": {
+    "description": "Incognito mode setting description"
+  },
+  "english": "Engels",
+  "@english": {
+    "description": "English language option"
+  },
+  "japanese": "Japans",
+  "@japanese": {
+    "description": "Japanese language option"
+  },
+  "korean": "Koreaans",
+  "@korean": {
+    "description": "Korean language option"
+  },
+  "dutch": "Nederlands",
+  "@dutch": {
+    "description": "Dutch language option"
+  },
+  "noImagesFound": "Geen afbeeldingen gevonden voor tag: {tag}",
+  "@noImagesFound": {
+    "description": "Message when no images are found",
+    "placeholders": {
+      "tag": {
+        "type": "String",
+        "description": "The search tag that returned no results"
+      }
+    }
+  },
+  "serverError": "Server fout: {code}",
+  "@serverError": {
+    "description": "Server error message",
+    "placeholders": {
+      "code": {
+        "type": "String",
+        "description": "The HTTP error code"
+      }
+    }
+  },
+  "page": "Pagina: {pageNumber} ({platform})",
+  "@page": {
+    "description": "Page indicator text",
+    "placeholders": {
+      "pageNumber": {
+        "type": "int",
+        "description": "Current page number"
+      },
+      "platform": {
+        "type": "String",
+        "description": "Current platform name"
+      }
+    }
+  },
+  "back": "Terug",
+  "@back": {
+    "description": "Back button text"
+  },
+  "forward": "Vooruit",
+  "@forward": {
+    "description": "Forward button text"
+  },
+  "pullNewImages": "Nieuwe Afbeeldingen Ophalen",
+  "@pullNewImages": {
+    "description": "Pull new images button text"
+  },
+  "video": "Video",
+  "@video": {
+    "description": "Video file type label"
+  },
+  "image": "Afbeelding",
+  "@image": {
+    "description": "Image file type label"
+  },
+  "enterTags": "Tags invoeren...",
+  "@enterTags": {
+    "description": "Placeholder text for tag input fields"
+  }
+}

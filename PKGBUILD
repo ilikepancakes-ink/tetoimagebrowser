@@ -1,6 +1,6 @@
 # Maintainer: Your Name <your.email@example.com>
 pkgname=tetoimagebrowser
-pkgver=4.1.0
+pkgver=5.0.0
 pkgrel=1
 pkgdesc="tuff Image Browser - A Flutter-based image browser application"
 arch=('x86_64')

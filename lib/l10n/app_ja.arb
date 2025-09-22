@@ -42,6 +42,7 @@
   "english": "English",
   "japanese": "日本語",
   "korean": "한국어",
+  "dutch": "オランダ語",
   "noImagesFound": "タグ「{tag}」の画像が見つかりません",
   "serverError": "サーバーエラー: {code}",
   "page": "ページ: {pageNumber} ({platform})",

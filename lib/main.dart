@@ -33,6 +33,8 @@ class CustomLocalizations {
         return _japaneseStrings;
       case 'ko':
         return _koreanStrings;
+      case 'nl':
+        return _dutchStrings;
       default:
         return _englishStrings;
     }
@@ -197,6 +199,59 @@ class CustomLocalizations {
     'image': '이미지',
     'enterTags': '태그 입력...',
   };
+
+  // Dutch strings
+  static const Map<String, String> _dutchStrings = {
+    'appTitle': 'Tuff Image Browser',
+    'searchForImage': 'Zoek naar een afbeelding',
+    'searchHint': 'Voer tags in zoals "kasane_teto", "vocaloid", of "anime" om afbeeldingen te vinden',
+    'search': 'Zoeken',
+    'home': 'Home',
+    'settings': 'Instellingen',
+    'history': 'Geschiedenis',
+    'starredImages': 'Favoriete Afbeeldingen',
+    'switchToLightMode': 'Omschakelen naar Licht Modus',
+    'switchToDarkMode': 'Omschakelen naar Donker Modus',
+    'displaySettings': 'Weergave Instellingen',
+    'gridColumns': 'Raster Kolommen',
+    'gridColumnsDescription': 'Aantal kolommen in het afbeeldingsraster',
+    'showFileTypeBadges': 'Toon Bestandstype Badges',
+    'showFileTypeBadgesDescription': 'Toon video/afbeelding badges op miniaturen',
+    'autoPlayVideos': 'Automatisch Video\'s Afspelen',
+    'autoPlayVideosDescription': 'Automatisch video afspelen starten wanneer geopend',
+    'searchSettings': 'Zoek Instellingen',
+    'resultsPerPage': 'Resultaten Per Pagina',
+    'resultsPerPageDescription': 'Aantal afbeeldingen om per pagina te laden',
+    'safeSearchMode': 'Veilig Zoeken Modus',
+    'safeSearchModeDescription': 'Expliciete inhoud filteren (aanbevolen)',
+    'defaultSafeBooruTags': 'Standaard SafeBooru Tags',
+    'defaultSafeBooruTagsDescription': 'Standaard zoek tags voor SafeBooru',
+    'defaultRule34Tags': 'Standaard Rule34 Tags',
+    'defaultRule34TagsDescription': 'Standaard zoek tags voor Rule34',
+    'defaultYandeTags': 'Standaard Yande.re Tags',
+    'defaultYandeTagsDescription': 'Standaard zoek tags voor Yande.re',
+    'downloadSettings': 'Download Instellingen',
+    'autoSaveToGallery': 'Automatisch Opslaan naar Galerij',
+    'autoSaveToGalleryDescriptionMobile': 'Automatisch afbeeldingen/video\'s opslaan naar app directory en fotogalerij wanneer bekeken',
+    'autoSaveToGalleryDescriptionDesktop': 'Automatisch afbeeldingen/video\'s opslaan naar Afbeeldingen map wanneer bekeken',
+    'appSettings': 'App Instellingen',
+    'language': 'Taal',
+    'languageDescription': 'Selecteer uw voorkeurstaal',
+    'hapticFeedback': 'Haptische Feedback',
+    'hapticFeedbackDescription': 'Trillen bij interactie met elementen',
+    'incognitoMode': 'Incognito Modus',
+    'incognitoModeDescription': 'Zoekgeschiedenis of favoriete afbeeldingen niet opslaan',
+    'english': 'Engels',
+    'japanese': 'Japans',
+    'korean': 'Koreaans',
+    'dutch': 'Nederlands',
+    'back': 'Terug',
+    'forward': 'Vooruit',
+    'pullNewImages': 'Nieuwe Afbeeldingen Ophalen',
+    'video': 'Video',
+    'image': 'Afbeelding',
+    'enterTags': 'Tags invoeren...',
+  };
 }
 
 class _CustomLocalizationsDelegate extends LocalizationsDelegate<CustomLocalizations> {
@@ -204,7 +259,7 @@ class _CustomLocalizationsDelegate extends LocalizationsDelegate<CustomLocalizat
 
   @override
   bool isSupported(Locale locale) {
-    return ['en', 'ja', 'ko'].contains(locale.languageCode);
+    return ['en', 'ja', 'ko', 'nl'].contains(locale.languageCode);
   }
 
   @override
@@ -365,6 +420,8 @@ class AppSettings {
   final bool showSearchHistory;
   final bool incognitoMode;
   final String language;
+  final String rule34ApiKey;
+  final String rule34UserId;
 
   const AppSettings({
     this.gridColumns = 2,
@@ -380,6 +437,8 @@ class AppSettings {
     this.showSearchHistory = true,
     this.incognitoMode = false,
     this.language = 'en',
+    this.rule34ApiKey = '',
+    this.rule34UserId = '',
   });
 
   factory AppSettings.fromJson(Map<String, dynamic> json) {
@@ -397,6 +456,8 @@ class AppSettings {
       showSearchHistory: json['showSearchHistory'] ?? true,
       incognitoMode: json['incognitoMode'] ?? false,
       language: json['language'] ?? 'en',
+      rule34ApiKey: json['rule34ApiKey'] ?? '',
+      rule34UserId: json['rule34UserId'] ?? '',
     );
   }
 
@@ -415,6 +476,8 @@ class AppSettings {
       'showSearchHistory': showSearchHistory,
       'incognitoMode': incognitoMode,
       'language': language,
+      'rule34ApiKey': rule34ApiKey,
+      'rule34UserId': rule34UserId,
     };
   }
 
@@ -432,6 +495,8 @@ class AppSettings {
     bool? showSearchHistory,
     bool? incognitoMode,
     String? language,
+    String? rule34ApiKey,
+    String? rule34UserId,
   }) {
     return AppSettings(
       gridColumns: gridColumns ?? this.gridColumns,
@@ -447,6 +512,8 @@ class AppSettings {
       showSearchHistory: showSearchHistory ?? this.showSearchHistory,
       incognitoMode: incognitoMode ?? this.incognitoMode,
       language: language ?? this.language,
+      rule34ApiKey: rule34ApiKey ?? this.rule34ApiKey,
+      rule34UserId: rule34UserId ?? this.rule34UserId,
     );
   }
 }
@@ -704,6 +771,7 @@ class _MyAppState extends State<MyApp> {
         Locale('en', ''), // English
         Locale('ja', ''), // Japanese
         Locale('ko', ''), // Korean
+        Locale('nl', ''), // Dutch
       ],
       locale: Locale(_currentLanguage, ''),
       theme: ThemeData(
@@ -880,8 +948,13 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
       apiUrl = '$yandeUrl/post.json?page=$_page&limit=$_limit&tags=$_currentSearchTag';
     } else {
       // SafeBooru and Rule34 API format
-      final String baseUrl = _isRule34Mode ? rule34Url : safeBooruUrl;
+      final String baseUrl = _isRule34Mode ? 'https://api.rule34.xxx/index.php' : safeBooruUrl;
       apiUrl = '$baseUrl?page=dapi&s=post&q=index&json=1&pid=$_page&limit=$_limit&tags=$_currentSearchTag';
+
+      // Add API key and user ID for rule34.xxx if configured
+      if (_isRule34Mode && _settings.rule34ApiKey.isNotEmpty && _settings.rule34UserId.isNotEmpty) {
+        apiUrl += '&api_key=${_settings.rule34ApiKey}&user_id=${_settings.rule34UserId}';
+      }
     }
 
     final Uri uri = Uri.parse(apiUrl);
@@ -890,10 +963,19 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
       final response = await http.get(uri);
 
       if (response.statusCode == 200) {
-        // Decode the JSON response. It is expected to be a JSON array.
-        List<dynamic> decoded = json.decode(response.body);
+        // Check if response is an error object first
+        final dynamic decoded = json.decode(response.body);
 
-        if (decoded.isNotEmpty) {
+        if (decoded is Map<String, dynamic> && decoded.containsKey('success') && decoded['success'] == false) {
+          // API error response
+          setState(() {
+            _errorMessage = decoded['message'] ?? 'API error: search down or overloaded';
+          });
+          return;
+        }
+
+        // Normal response - should be a JSON array
+        if (decoded is List) {
           List<ImagePost> posts;
           if (_isYandeMode) {
             // Yande.re has a different JSON structure
@@ -1757,6 +1839,18 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
                 _settings.defaultYandeTags,
                 (value) => _updateSettings(_settings.copyWith(defaultYandeTags: value)),
               ),
+              _buildTextFieldSetting(
+                'Rule34 API Key',
+                'API key for rule34.xxx (get from account options)',
+                _settings.rule34ApiKey,
+                (value) => _updateSettings(_settings.copyWith(rule34ApiKey: value)),
+              ),
+              _buildTextFieldSetting(
+                'Rule34 User ID',
+                'User ID for rule34.xxx (get from account options)',
+                _settings.rule34UserId,
+                (value) => _updateSettings(_settings.copyWith(rule34UserId: value)),
+              ),
             ],
           ),
 
@@ -2027,6 +2121,10 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
           DropdownMenuItem<String>(
             value: 'ko',
             child: Text(localizations.translate('korean')),
+          ),
+          DropdownMenuItem<String>(
+            value: 'nl',
+            child: Text(localizations.translate('dutch')),
           ),
         ],
         onChanged: (String? newValue) {

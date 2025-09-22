@@ -168,6 +168,10 @@
   "@korean": {
     "description": "Korean language option"
   },
+  "dutch": "Dutch",
+  "@dutch": {
+    "description": "Dutch language option"
+  },
   "noImagesFound": "No images found for tag: {tag}",
   "@noImagesFound": {
     "description": "Message when no images are found",
