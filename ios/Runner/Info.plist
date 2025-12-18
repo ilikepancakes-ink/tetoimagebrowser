@@ -49,5 +49,16 @@
 	<string>This app needs access to save images and videos to your photo library.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>This app needs access to save images and videos to your photo library.</string>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<false/>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
+	<key>NSAllowsArbitraryLoadsInWebContent</key>
+	<false/>
+	<key>NSAllowsLocalNetworking</key>
+	<true/>
 </dict>
 </plist>

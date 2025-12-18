@@ -138,6 +138,9 @@ class AppLocalizationsKo extends AppLocalizations {
   String get korean => '한국어';
 
   @override
+  String get dutch => '네덜란드어';
+
+  @override
   String noImagesFound(String tag) {
     return '태그 \"$tag\"에 대한 이미지를 찾을 수 없습니다';
   }

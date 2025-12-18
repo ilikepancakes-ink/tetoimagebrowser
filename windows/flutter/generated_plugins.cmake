@@ -4,8 +4,6 @@
 
 list(APPEND FLUTTER_PLUGIN_LIST
   gal
-  media_kit_video
-  volume_controller
 )
 
 list(APPEND FLUTTER_FFI_PLUGIN_LIST

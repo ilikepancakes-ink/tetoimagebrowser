@@ -11,11 +11,9 @@ import 'package:video_player/video_player.dart';
 import 'package:chewie/chewie.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:gal/gal.dart';
-import 'package:media_kit/media_kit.dart';
-import 'package:media_kit_video/media_kit_video.dart';
-import 'package:video_player_media_kit/video_player_media_kit.dart';
 
-// Simple localization helper class
+
+// Eenvoudige lokalisatie hulpklasse
 class CustomLocalizations {
   final String languageCode;
 
@@ -44,7 +42,7 @@ class CustomLocalizations {
     return _localizedStrings[key] ?? key;
   }
 
-  // English strings
+  // Engelse strings
   static const Map<String, String> _englishStrings = {
     'appTitle': 'Tuff Image Browser',
     'searchForImage': 'Search for a image',
@@ -96,7 +94,7 @@ class CustomLocalizations {
     'enterTags': 'Enter tags...',
   };
 
-  // Japanese strings
+  // Japanse strings
   static const Map<String, String> _japaneseStrings = {
     'appTitle': 'タフ画像ブラウザ',
     'searchForImage': '画像を検索',
@@ -148,7 +146,7 @@ class CustomLocalizations {
     'enterTags': 'タグを入力...',
   };
 
-  // Korean strings
+  // Koreaanse strings
   static const Map<String, String> _koreanStrings = {
     'appTitle': '터프 이미지 브라우저',
     'searchForImage': '이미지 검색',
@@ -200,7 +198,7 @@ class CustomLocalizations {
     'enterTags': '태그 입력...',
   };
 
-  // Dutch strings
+  // Nederlandse strings
   static const Map<String, String> _dutchStrings = {
     'appTitle': 'Tuff Image Browser',
     'searchForImage': 'Zoek naar een afbeelding',
@@ -704,14 +702,6 @@ void main() {
   // Set app title and icon for desktop platforms
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize MediaKit for video playback support on all platforms
-  MediaKit.ensureInitialized();
-
-  // Register video_player_media_kit for Linux desktop support
-  if (Platform.isLinux || Platform.isWindows || Platform.isMacOS) {
-    VideoPlayerMediaKit.ensureInitialized();
-  }
-
   runApp(MyApp());
 }
 
@@ -827,6 +817,7 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
   bool _isRule34Mode = false;
   bool _isYandeMode = false;
   bool _isSettingsMode = false;
+  bool _isAiMode = false;
 
   // App settings
   AppSettings _settings = const AppSettings();
@@ -1035,20 +1026,23 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
     final searchText = _searchController.text.trim();
     if (searchText.isEmpty) return;
 
+    // Add "-ai" suffix if AI toggle is enabled
+    final effectiveSearchText = _isAiMode ? '$searchText -ai' : searchText;
+
     setState(() {
       // Update the appropriate search tag based on current tab
       if (_isRule34Mode) {
-        _rule34SearchTag = searchText;
+        _rule34SearchTag = effectiveSearchText;
       } else if (_isYandeMode) {
-        _yandeSearchTag = searchText;
+        _yandeSearchTag = effectiveSearchText;
       } else {
-        _safeBooruSearchTag = searchText;
+        _safeBooruSearchTag = effectiveSearchText;
       }
       _page = 1; // Reset to first page for new search
       _images.clear(); // Clear current images
     });
 
-    // Add to search history
+    // Add to search history (use original search text, not the effective one)
     final platform = _isRule34Mode ? 'Rule34' : (_isYandeMode ? 'Yande.re' : 'SafeBooru');
     _addToSearchHistory(searchText, platform);
 
@@ -1391,7 +1385,7 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
         title: Text(_getAppTitle()),
         leading: const Padding(
           padding: EdgeInsets.all(8.0),
-          child: Icon(Icons.music_note, color: Color(0xFFE91E63)),
+          child: Icon(Icons.search, color: Color(0xFFE91E63)),
         ),
         actions: [
           IconButton(
@@ -1482,31 +1476,52 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
             const SizedBox(height: 32),
             SizedBox(
               width: 400,
-              child: Row(
+              child: Column(
                 children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _searchController,
-                      decoration: InputDecoration(
-                        hintText: localizations.translate('searchForImage'),
-                        prefixIcon: const Icon(Icons.search),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8.0),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _searchController,
+                          decoration: InputDecoration(
+                            hintText: localizations.translate('searchForImage'),
+                            prefixIcon: const Icon(Icons.search),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8.0),
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                          ),
+                          onSubmitted: (_) => _performSearch(),
                         ),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
                       ),
-                      onSubmitted: (_) => _performSearch(),
-                    ),
+                      const SizedBox(width: 8.0),
+                      ElevatedButton(
+                        onPressed: _performSearch,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFE91E63),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                        ),
+                        child: Text(localizations.translate('search')),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 8.0),
-                  ElevatedButton(
-                    onPressed: _performSearch,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFE91E63),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-                    ),
-                    child: Text(localizations.translate('search')),
+                  const SizedBox(height: 8.0),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Text('AI Generated'),
+                      const SizedBox(width: 8.0),
+                      Switch(
+                        value: _isAiMode,
+                        onChanged: (value) {
+                          setState(() {
+                            _isAiMode = value;
+                          });
+                        },
+                        activeColor: const Color(0xFFE91E63),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -1727,7 +1742,7 @@ class ImageBrowserPageState extends State<ImageBrowserPage>
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     const Icon(
-                      Icons.music_note,
+                      Icons.search,
                       color: Color(0xFFE91E63),
                       size: 24,
                     ),

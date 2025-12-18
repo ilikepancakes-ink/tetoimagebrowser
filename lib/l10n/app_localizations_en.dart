@@ -144,6 +144,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get korean => 'Korean';
 
   @override
+  String get dutch => 'Dutch';
+
+  @override
   String noImagesFound(String tag) {
     return 'No images found for tag: $tag';
   }

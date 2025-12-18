@@ -8,6 +8,7 @@ import 'package:intl/intl.dart' as intl;
 import 'app_localizations_en.dart';
 import 'app_localizations_ja.dart';
 import 'app_localizations_ko.dart';
+import 'app_localizations_nl.dart';
 
 // ignore_for_file: type=lint
 
@@ -98,6 +99,7 @@ abstract class AppLocalizations {
     Locale('en'),
     Locale('ja'),
     Locale('ko'),
+    Locale('nl'),
   ];
 
   /// The title of the application
@@ -352,6 +354,12 @@ abstract class AppLocalizations {
   /// **'Korean'**
   String get korean;
 
+  /// Dutch language option
+  ///
+  /// In en, this message translates to:
+  /// **'Dutch'**
+  String get dutch;
+
   /// Message when no images are found
   ///
   /// In en, this message translates to:
@@ -418,7 +426,7 @@ class _AppLocalizationsDelegate
 
   @override
   bool isSupported(Locale locale) =>
-      <String>['en', 'ja', 'ko'].contains(locale.languageCode);
+      <String>['en', 'ja', 'ko', 'nl'].contains(locale.languageCode);
 
   @override
   bool shouldReload(_AppLocalizationsDelegate old) => false;
@@ -433,6 +441,8 @@ AppLocalizations lookupAppLocalizations(Locale locale) {
       return AppLocalizationsJa();
     case 'ko':
       return AppLocalizationsKo();
+    case 'nl':
+      return AppLocalizationsNl();
   }
 
   throw FlutterError(
